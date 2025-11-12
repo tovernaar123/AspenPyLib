@@ -1,9 +1,0 @@
-#ignore everything
-*
-#Not dirs
-!/**/
-#Not python files
-!*.py
-#And not this file
-!.gitignore
-#Add any other files below:
