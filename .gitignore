@@ -6,6 +6,7 @@ settings.json
 #And not this file
 !.gitignore
 #Add any other files below:
+.vscode
 .venv
 .python-version
 uv.lock
