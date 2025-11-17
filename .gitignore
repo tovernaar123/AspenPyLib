@@ -1,8 +1,8 @@
 settings.json
 #Not dirs
 
-!/aspen_files/*.apw
-
+!./aspen_files/*.apw
+!./src
 #Add any other files below:
 .vscode
 .venv
