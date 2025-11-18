@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 import win32com.client as win32
 import sys
-import scipy as sc
-import time
 
-sys.path.append("src")
-import src.aspenOptimizationLib as aol
+if len(sys.argv) < 2:
+    print("Should be called with the name of the aspen file")
+    exit(1)
+
+# Connect to Aspen Plus
+aspen = win32.gencache.EnsureDispatch("Apwn.Document")
+aspen.InitFromArchive2(sys.argv[1])
+aspen.Visible = False
+aspen.SuppressDialogs = True  # Suppress windows dialogs
 
 @dataclass
 class SearchBlock:
@@ -29,50 +34,33 @@ search = {
     "RStoic": SearchBlock([], []),
 }
 
-if len(sys.argv) < 2:
-    print("Should be called with the name of the aspen file")
-    exit(1)
-
-    
-#CONNECT TO ASPEN FILE#
-#print(f"Open file {sys.argv[1]}")
-aspen = win32.gencache.EnsureDispatch("Apwn.Document")
-aspen.InitFromArchive2(sys.argv[1])
-aspen.Visible = False
-aspen.SuppressDialogs = True  # Suppress windows dialogs
-aspen.Engine.Run2()
 
 data = {}
 
+def get_all_children(node):
+    return (node.Elements.Item(i) for i in range(node.Elements.Count))
+
 RECORD_TYPE = 6
 
-blocks = list(aol.get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
+blocks = list(get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
 
-initialData = aol.readAspen(blocks, RECORD_TYPE, search, data)
-blocksList = list(initialData.keys())
-trueFeedStreams = []
-trueOutputStreams = []
-    
-aol.listPossibleBlocksStreams(blocksList, aspen, trueFeedStreams, trueOutputStreams)
+# Loop through all blocks
+for block in blocks:
+    recordType = block.AttributeValue(RECORD_TYPE)
+    print(block.Name, block.Value, block.ValueType, recordType)
 
-result = aol.optimizeInputs([7],
-            [5, 10],
-            aol.aspenBlackBox,
-            True,
-            ["PRES"],
-            ["COMP-1"],
-            aol.getTEAResult,
-            blocks,
-            data, 
-            aspen,
-            RECORD_TYPE,
-            search)
-            
-print(result)
+    curr_data = {}
+
+    if s := search.get(recordType):
+        for path, name in s.data:
+            b = block.FindNode(rf"Output\{path}")
+            curr_data[name] = (b.Value, b.UnitString)
+            data[block.Name] = curr_data
+
+        for path in s.children:
+            b = block.FindNode(rf"Data\{path}")
+            blocks.extend(get_all_children(b))
 
 
 
-
-
-
-
+print(data)
