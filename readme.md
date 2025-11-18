@@ -1,10 +1,20 @@
-# {project_name}
+# AspenPyLib
 
 this is an project for the CSE (computational science for engineering) minor at the TU Delft for the course TW3725 TU
 
-## timeline
+## about the project
 
-Q2 2025-2026
+The initial goal of this project is improving the user friendlyness of reading and writing data from and to an asping project file (.apw) and making it usable with the [OpenPyTEA](https://github.com/pbtamarona/OpenPyTEA) package.
+When this initial goal is completed the package will also add optimisation fuctions to optimise the TEA.
+
+
+## Usage / instalation
+
+
+
+## Development timeline
+
+Q2 2025-2026 (10-11-2025 t/m 30-01-2026)
 
 ### Week 1:  :white_check_mark:
 
