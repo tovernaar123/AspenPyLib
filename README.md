@@ -4,7 +4,7 @@ this is an project for the CSE (computational science for engineering) minor at 
 
 ## about the project
 
-The initial goal of this project is improving the user friendlyness of reading and writing data from and to an asping project file (.apw) and making it usable with the [OpenPyTEA](https://github.com/pbtamarona/OpenPyTEA) package.
+The initial goal of this project is improving the user friendliness of reading and writing data from and to an Aspen Plus project file (.apw) from Python and making it usable with the [OpenPyTEA](https://github.com/pbtamarona/OpenPyTEA) package.
 When this initial goal is completed the package will also add optimisation fuctions to optimise the TEA.
 
 
