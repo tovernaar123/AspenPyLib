@@ -5,7 +5,7 @@ import scipy as sc
 import time
 
 sys.path.append("src")
-import aspenOptimizationLib as aol
+import src.aspenOptimizationLib as aol
 
 @dataclass
 class SearchBlock:
