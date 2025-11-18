@@ -14,7 +14,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pywin32", specifier = ">=311" },
-    { name = "scipy" },
+    { name = "scipy", specifier = ">=1.16.3" },
 ]
 
 [[package]]

@@ -6,5 +6,5 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pywin32>=311",
-	"scipy"
+    "scipy>=1.16.3",
 ]
