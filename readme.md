@@ -9,6 +9,20 @@ When this initial goal is completed the package will also add optimisation fucti
 
 
 ## Usage / instalation
+This project was developed using [uv](https://github.com/astral-sh/uv) and thus all packages and versions including the python version are stored in the [pyproject.toml](https://github.com/tovernaar123/AspenPyLib/blob/main/pyproject.toml).
+
+To install use this project for development:
+``` bash
+git clone https://github.com/tovernaar123/AspenPyLib.git
+cd AspenPyLib
+uv sync
+```
+
+and to run using uv
+```bash
+uv run <script_name>
+```
+
 
 
 
