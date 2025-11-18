@@ -87,5 +87,5 @@ only if pressed for time
 * submit second draft
 
 ### Week 10
-* maby fourth draft
+* maybe fourth draft
 * submit final report (January 31, 2026, via Brightspace)
