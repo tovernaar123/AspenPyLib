@@ -18,7 +18,6 @@ def getTEAResult(aspen):
 
     return totalpower
     
-# def aspenBlackBox(valuesArray, isBlock, paramArray, blockNameArray, getTeaResultFunc, blocksArray, dataVar, aspen, record_type, searchDict):
 def aspenBlackBox(valuesArray, isBlock, paramArray, blockNameArray, aspen):        
     assert not (len(paramArray) != len(blockNameArray) and len(paramArray) != len(valuesArray)), (
         "ERROR: enter correct number of parameters and blocks"
