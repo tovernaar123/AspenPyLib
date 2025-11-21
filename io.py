@@ -7,6 +7,9 @@ ps: json things are basically just wrappers right now.
 """
 import sys
 import json
+import sys # someone better versed in python make this pretty
+
+from openpytea.plant import Plant
 """
 TODO:
 - [] add process plant creation
@@ -39,15 +42,21 @@ def read_JSON(path)->dict:
     return data
 
 
-def TEA_plant(data):
+def TEA_plant(data:dict, configuration:dict):
     '''
-    translates the data into the TEA object(s)
+    translates the data into the TEA plant.
+    see TEA documentation for configuration options
     '''
-    raise NotImplementedError("LOL i haven't done any real work yet :p")
+
+    pl = plant.Plant(configuration)
+
+    raise NotImplementedError("I'm not finished yet...")
 
 
 def main():
-    pass
+    data = {"foo":"bar"}
+
+    TEA_plant({},{})
 
 
 if __name__ == "__main__":
