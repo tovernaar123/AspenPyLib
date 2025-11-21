@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.3.4",
+    "openpytea",
     "pywin32>=311",
     "scipy>=1.16.3",
 ]
+
+[tool.uv.sources]
+openpytea = { git = "https://github.com/ggrandi/OpenPyTEA.git", branch = "building" }
