@@ -1,17 +1,33 @@
-import scipy as sc
+from typing import Sequence,Tuple, TypeAlias,Union
+from numpy.typing import NDArray
+import numpy as np
+from openpytea.plant import Plant
+from scipy.optimize import Bounds, minimize
+import inout
 
-def getTEAResult(aspenOutput):
+
+
+def CreatePlant(aspen) -> Plant:
+    plant_configuration = inout.readAspen(aspen)
+    Plant_object = inout.TEA_plant(plant_configuration, plant_configuration)
+    return Plant_object
+
+def getTEAResult(aspen) -> float:
     """ Placeholder function for TEA review functionality """
-    blocksOutput = list(aspenOutput.keys())
-    totalpower = 0
-    print(aspenOutput)
-    for blockName in blocksOutput:
-        totalpower += float(aspenOutput[blockName]['Net Power'][0])
-
-    return totalpower
+    Plant_object = CreatePlant(aspen)
+    Plant_object.calculate_variable_opex() 
+    variable:float =  Plant_object.variable_production_costs
+    Plant_object.calculate_fixed_opex()
+    fixed: float = Plant_object.fixed_production_costs
+    return variable + fixed
     
-# def aspenBlackBox(valuesArray, isBlock, paramArray, blockNameArray, getTeaResultFunc, blocksArray, dataVar, aspen, record_type, searchDict):
-def aspenBlackBox(valuesArray, isBlock, paramArray, blockNameArray, aspen):        
+def aspenBlackBox(
+    valuesArray:NDArray[np.float64], 
+    isBlock:bool, 
+    paramArray:Sequence[str], 
+    blockNameArray:Sequence[str], 
+    aspen
+    ) -> float:        
     assert not (len(paramArray) != len(blockNameArray) and len(paramArray) != len(valuesArray)), (
         "ERROR: enter correct number of parameters and blocks"
     )
@@ -34,13 +50,27 @@ def aspenBlackBox(valuesArray, isBlock, paramArray, blockNameArray, aspen):
     aspen.Engine.Run2()
     cost = getTEAResult(aspen)
     return cost
-    
-def optimizeInputs(initialValues, bounds, isBlock, paramArray, blockNameArray, aspen):
+
+BoundsType:TypeAlias = Union[
+    Tuple[float, float],
+    Tuple[Sequence[float], Sequence[float]], 
+]
+
+def optimizeInputs(
+    initialValues:Sequence[float], 
+    bounds:BoundsType, 
+    isBlock:bool, 
+    paramArray:Sequence[str], 
+    blockNameArray:Sequence[str], 
+    aspen
+    ):
     args = (isBlock, paramArray, blockNameArray, aspen)
     upperBound = bounds[1]
     lowerBound = bounds[0]
-    limits = sc.optimize.Bounds(lowerBound, upperBound)
-    result = sc.optimize.minimize(aspenBlackBox, initialValues, bounds=limits, method='trust-constr', args=args)
+    limits = Bounds(lb = lowerBound, ub= upperBound)
+    
+    
+    result = minimize(aspenBlackBox, initialValues, bounds=limits, method='trust-constr', args=args)
     return result
 
 def listPossibleBlocksStreams(blockNameList, aspenItem):

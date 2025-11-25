@@ -20,7 +20,31 @@ TODO:
 
 """
 
-def readAspen(aspen, search, RECORD_TYPE):
+@dataclass
+class SearchBlock:
+    data: list[tuple[str, str]]
+    children: list[str]
+
+search = {
+    "Hierarchy": SearchBlock([], ["Blocks"]),
+    "Compr": SearchBlock([("WNET", "Net Power")], []),
+    "MCompr": SearchBlock([("WNET", "Net Power")], []),
+    "Turb": SearchBlock([("WNET", "Net Power")], []),
+    "Cyclone": SearchBlock([], []),
+    "Sep": SearchBlock([], []),
+    "HeatX": SearchBlock([], []),
+    "Dupl": SearchBlock([], []),
+    "Flash2": SearchBlock([], []),
+    "Heater": SearchBlock([], []),
+    "Mixer": SearchBlock([], []),
+    "Sep2": SearchBlock([], []),
+    "RPlug": SearchBlock([], []),
+    "Valve": SearchBlock([], []),
+    "RStoic": SearchBlock([], []),
+}
+
+RECORD_TYPE = 6
+def readAspen(aspen, search=search):
     data = {}
     blocks = list(get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
     # Loop through all blocks
@@ -35,6 +59,7 @@ def readAspen(aspen, search, RECORD_TYPE):
                 b = block.FindNode(rf"Output\{path}")
                 curr_data["parameter"] = np.abs(b.Value)
                 curr_data["name"] = name
+                curr_data["type"] = recordType
                 curr_data["unit"] = b.UnitString
                 data[block.Name] = curr_data
             for path in s.children:
@@ -90,16 +115,35 @@ TEA_type_d = {
     'MCompr' : 'Centrifugal pump',
     'Turb' : 'Steam turbine'
 }
-opex_d = { # TODO: make way for user editing later on
-    'electricity': {
-        'price': 0.10, 'price_std': 0.05/2, 'price_max': 3, 'price_min': 0.01
-    },
-    'refrigerant': { 
-        'price': 5, 'price_std': 3/2, 'price_max': 10, 'price_min': 1
-    },
-    'cooling_water':{
-        'price': 2.4592e-4, 'price_std': 1e-4, 'price_max': 4e-4, 'price_min': 1e-5
-    }
+opex_d = {
+        # For the variable opex inputs, the consumption is always based on daily consumption
+
+        #Wnet + the other power names
+        "electricity": {
+            "consumption": (1000 + 1000) * 24,
+            #wondering of aspen knows these?
+            "price": 0.10, 
+            "price_std": 0.05 / 2,
+            "price_max": 3,
+            "price_min": 0.01,
+        },
+
+        #Should be taken from the streams
+        "refrigerant": {  # 1.5 kg/h taken from Figure 1
+            "consumption": 1.5 * 24,
+            "price": 5,
+            "price_std": 3 / 2,
+            "price_max": 10,
+            "price_min": 1,
+        },
+
+        "cooling_water": {  # 11.03 kg/h taken from Figure 1
+            "consumption": 39_690 * 24,
+            "price": 2.4592e-4,
+            "price_std": 1e-4,
+            "price_max": 4e-4,
+            "price_min": 1e-5,
+        },
 }
 
 # ======== utils =========
@@ -139,7 +183,7 @@ def TEA_plant(data:dict, configuration:dict):
             num_units=1, # i assume they're not grouped
             purchased_cost=None, # does Aspen know maybe?
             cost_func= None, # presume aspen doesn't know
-            target_year= 2023 # just doing what would be default
+            target_year= 2023, # just doing what would be default
         )
         equip.append(new_equip)
         # do something about inputs:
@@ -148,16 +192,24 @@ def TEA_plant(data:dict, configuration:dict):
 
     configuration['equipment'] = equip
 
+    #kinda confused what this was supposed to do
     # make opex inputs "verbose"
-    opex_inputs_verbose = {}
-    for in_name in opex_inputs:
-        in_val = opex_inputs[in_name]
-        dict_val = opex_d[in_name]
-        opex_inputs_verbose[in_name] = dict_val
+    # opex_inputs_verbose = {}
+    # for in_name in opex_inputs:
+    #     in_val = opex_inputs[in_name]
+    #     dict_val = opex_d[in_name]
+    #     opex_inputs_verbose[in_name] = dict_val
 
-    configuration['variable_opex_inputs'] = opex_inputs_verbose
+    # configuration['variable_opex_inputs'] = opex_inputs_verbose
     configuration['process_type'] = 'Fluids' # change based on blocks?
     configuration['daily_prod'] = production['count'] # TEMPORARY
+    configuration['country'] = 'Netherlands' # User input
+
+
+    # This is going to need be made from the streams / blocks
+    configuration["variable_opex_inputs"] = opex_d
+    configuration['operator_hourly_rate'] = 38.11 # User input
+    configuration['interest_rate'] = 0.09 # User input
 
     return Plant(configuration)
 
