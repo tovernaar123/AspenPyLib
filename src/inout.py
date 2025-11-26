@@ -20,52 +20,52 @@ TODO:
 
 """
 
-@dataclass
-class SearchBlock:
-    data: list[tuple[str, str]]
-    children: list[str]
-
-search = {
-    "Hierarchy": SearchBlock([], ["Blocks"]),
-    "Compr": SearchBlock([("WNET", "Net Power")], []),
-    "MCompr": SearchBlock([("WNET", "Net Power")], []),
-    "Turb": SearchBlock([("WNET", "Net Power")], []),
-    "Cyclone": SearchBlock([], []),
-    "Sep": SearchBlock([], []),
-    "HeatX": SearchBlock([], []),
-    "Dupl": SearchBlock([], []),
-    "Flash2": SearchBlock([], []),
-    "Heater": SearchBlock([], []),
-    "Mixer": SearchBlock([], []),
-    "Sep2": SearchBlock([], []),
-    "RPlug": SearchBlock([], []),
-    "Valve": SearchBlock([], []),
-    "RStoic": SearchBlock([], []),
-}
-
-RECORD_TYPE = 6
-def readAspen(aspen, search=search):
-    data = {}
-    blocks = list(get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
-    # Loop through all blocks
-    for block in blocks:
-        recordType = block.AttributeValue(RECORD_TYPE)
-        if block.Name[:4] == "TURB":
-            recordType = "Turb"
-        # print(block.Name, block.Value, block.ValueType, recordType)
-        curr_data = {}
-        if s := search.get(recordType):
-            for path, name in s.data:
-                b = block.FindNode(rf"Output\{path}")
-                curr_data["parameter"] = np.abs(b.Value)
-                curr_data["name"] = name
-                curr_data["type"] = recordType
-                curr_data["unit"] = b.UnitString
-                data[block.Name] = curr_data
-            for path in s.children:
-                b = block.FindNode(rf"Data\{path}")
-                blocks.extend(get_all_children(b))
-    return data
+# @dataclass
+# class SearchBlock:
+#     data: list[tuple[str, str]]
+#     children: list[str]
+#
+# search = {
+#     "Hierarchy": SearchBlock([], ["Blocks"]),
+#     "Compr": SearchBlock([("WNET", "Net Power")], []),
+#     "MCompr": SearchBlock([("WNET", "Net Power")], []),
+#     "Turb": SearchBlock([("WNET", "Net Power")], []),
+#     "Cyclone": SearchBlock([], []),
+#     "Sep": SearchBlock([], []),
+#     "HeatX": SearchBlock([], []),
+#     "Dupl": SearchBlock([], []),
+#     "Flash2": SearchBlock([], []),
+#     "Heater": SearchBlock([], []),
+#     "Mixer": SearchBlock([], []),
+#     "Sep2": SearchBlock([], []),
+#     "RPlug": SearchBlock([], []),
+#     "Valve": SearchBlock([], []),
+#     "RStoic": SearchBlock([], []),
+# }
+#
+# RECORD_TYPE = 6
+# def readAspen(aspen, search=search):
+#     data = {}
+#     blocks = list(get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
+#     # Loop through all blocks
+#     for block in blocks:
+#         recordType = block.AttributeValue(RECORD_TYPE)
+#         if block.Name[:4] == "TURB":
+#             recordType = "Turb"
+#         # print(block.Name, block.Value, block.ValueType, recordType)
+#         curr_data = {}
+#         if s := search.get(recordType):
+#             for path, name in s.data:
+#                 b = block.FindNode(rf"Output\{path}")
+#                 curr_data["parameter"] = np.abs(b.Value)
+#                 curr_data["name"] = name
+#                 curr_data["type"] = recordType
+#                 curr_data["unit"] = b.UnitString
+#                 data[block.Name] = curr_data
+#             for path in s.children:
+#                 b = block.FindNode(rf"Data\{path}")
+#                 blocks.extend(get_all_children(b))
+#     return data
 # ======== IO ================
 
 def get_all_children(node):
