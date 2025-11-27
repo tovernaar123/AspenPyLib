@@ -38,19 +38,18 @@ Q2 2025-2026 (10-11-2025 t/m 30-01-2026)
 
 ### Week 2:
 
-* [ ] start making the compatibility between the data gathering function and the TEA package.
+* [x] start making the compatibility between the data gathering function and the TEA package.
 * [x] finish the data gathering function for compressor
-* [ ] start making simple tests for the data gathering function
+* [x] start making simple tests for the data gathering function
 
 
 ### Week 3:
-
 * [ ] finish data gathering function 
-* [ ] start thinking about optimisation methods using TEA
 * [ ] start making complex tests for the data gathering fuction
 * [ ] start making tests for the conversion from the data gathering function to the TEA package
 
 ### Week 4:
+* [ ] start thinking about optimisation methods using TEA
 * [ ] work out multivariable optimisation methods
 * [ ] finish the integration with TEA package
 
