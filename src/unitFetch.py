@@ -1,4 +1,4 @@
-from aspen import Aspen
+from .aspen import Aspen
 
 def unitfetch(aspen:Aspen)-> dict:
     '''

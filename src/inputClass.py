@@ -1,4 +1,4 @@
-from aspen import read_data, Aspen
+from .aspen import read_data, Aspen
 
 def getinputClass(data:dict=None,Aspen:Aspen = None) -> dict:
     '''
