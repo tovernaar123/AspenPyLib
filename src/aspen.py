@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Callable, Any, TypeAlias
 
 import win32com.client as win32
 
-Aspen = win32.CDispatch
+Aspen: TypeAlias = win32.CDispatch
 
 
 def init_aspen(filename: str):
@@ -32,21 +32,43 @@ class Res:
     data: float
     unit: str
 
+HAP_RECORDTYPE = 6
+# Port in or out
+HAP_INOUT = 14
+HAP_UNITROW = 2
+HAP_UNITCOL = 3
 
-Fetcher = Callable[[Any, str], Res]
+Block: TypeAlias = Any
+
+Fetcher = Callable[[Block, str], Res]
+
+def get_value_with_unit(block: Block, unit: str):
+    unit_row = block.AttributeValue(HAP_UNITROW)
+    unit_table = block.Application.Tree.FindNode(r"\Unit Table")
+
+    # subtracting by 1 since the table starts at 1 but .Item(...) starts at 0
+    row = unit_table.Elements.Item(unit_row - 1)
+
+    # this is quoted so that if the unit contains a / it still works
+    # for example `l/sec`
+    unit_block = row.FindNode(f"'{unit}'")
+
+    assert unit_block is not None, f"Couldn't find '{unit}' in {row.Name}"
+
+    return block.ValueForUnit(unit_row, unit_block.Value)
 
 
-def fetch_from_data(path: str, output_name: str) -> Fetcher:
-    def fetch(block, _block_path):
+def fetch_from_data(path: str, output_name: str, unit: str) -> Fetcher:
+    def fetch(block: Block, _block_path: str):
         b = block.FindNode(path)
         assert b is not None, f"couldn't find {path} for {block.Name}"
-        return Res(output_name, b.Value, b.UnitString)
+        return Res(output_name, get_value_with_unit(b, unit), unit)
 
     return fetch
 
 
 def fetch_from_connection(port: str, path: str, output_name: str) -> Fetcher:
-    def fetch(block, block_path):
+    def fetch(block: Block, block_path: str):
         p, *other = [b for b, _ in get_all_children(block.FindNode(rf"Ports\{port}"))]
         assert len(other) == 0, f"Multiple blocks connected to {port}. Expected 1 but got {1 + len(other)}"
 
@@ -59,17 +81,17 @@ def fetch_from_connection(port: str, path: str, output_name: str) -> Fetcher:
 
 
 DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
-    "Mixer": [fetch_from_connection("P(OUT)", r"Output\VOLFLMX2", "Outlet Flow")],
-    "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure")],
-    "Flash3": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure")],
+    "Mixer": [fetch_from_connection("P(OUT)", r"Output\VOLFLMX2", "flow")],
+    "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
+    "Flash3": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Decanter": [],  # TODO: Not in cstr-ch4.apw
     "Sep": [],  # TODO: figure out how to get pressure
     "Sep2": [],  # TODO: figure out how to get pressure
     # for the heater, not sure if the heating duty is `QNET` or `QCALC`
-    "Heater": [fetch_from_data(r"Output\QCALC", "Heating Duty")],
+    "Heater": [fetch_from_data(r"Output\QCALC", "Heating Duty", "MW")],
     "HeatX": [
-        fetch_from_data(r"Output\HX_AREAP", "Heat Transfer Area"),
-        fetch_from_data(r"Output\HX_DUTY", "Duty"),
+        fetch_from_data(r"Output\HX_AREAP", "Heat Transfer Area", "sqm"),
+        fetch_from_data(r"Output\HX_DUTY", "Duty", "MW"),
     ],
     # "MHeatX": SearchBlock([]),
     # All types of Columns
@@ -85,18 +107,17 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "REquil": [],
     "RGibbs": [],
     "RCSTR": [
-        fetch_from_data(r"Output\B_PRES", "Pressure"),
-        fetch_from_data(r"Output\TOT_VOL", "Volume"),
+        fetch_from_data(r"Output\B_PRES", "Pressure", "bar"),
+        fetch_from_data(r"Output\TOT_VOL", "Volume", "cum"),
     ],
     "RPlug": [],
     "RBatch": [],
     "RStoic": [
-        fetch_from_data(r"Output\B_PRES", "Pressure")
+        fetch_from_data(r"Output\B_PRES", "Pressure", "bar")
     ],  # TODO: Find the length and width/ volume
-    # TODO: Pump VFLOW is in cum/sec in Aspen, needs to be in L/sec
-    "Pump": [fetch_from_data(r"Output\VFLOW", "Volumetric Flow")],
-    "Compr": [fetch_from_data(r"Output\WNET", "Net Power")],
-    "MCompr": [fetch_from_data(r"Output\WNET", "Net Power")],
+    "Pump": [fetch_from_data(r"Output\VFLOW", "Volumetric Flow", "l/sec")],
+    "Compr": [fetch_from_data(r"Output\WNET", "Net Power", "kW")],
+    "MCompr": [fetch_from_data(r"Output\WNET", "Net Power", "kW")],
     "Crytallizer": [],  # TODO: Not in cstr-ch4.apw
     "Crusher": [],  # TODO: Not in cstr-ch4.apw
     "Dryer": [],  # TODO: Not in cstr-ch4.apw
@@ -109,9 +130,6 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "CfFilter": [],  # TODO: Not in cstr-ch4.apw
     # Valve not in TEA?
 }
-HAP_RECORDTYPE = 6
-# Port in or out
-HAP_INOUT = 14
 
 
 def read_data(aspen: Aspen, search: dict[str, list[Fetcher]] = DEFAULT_SEARCH):
@@ -149,12 +167,28 @@ def read_data(aspen: Aspen, search: dict[str, list[Fetcher]] = DEFAULT_SEARCH):
     return data
 
 
+def read_all_units(aspen: Aspen):
+    units = {
+        u.Name: {
+            "value": u.Value,
+            "children": {c.Name: c.Value for c, _ in get_all_children(u)},
+        }
+        for u, _ in get_all_children(aspen.Application.Tree.FindNode(r"\Unit Table"))}
+
+    return units
+
+
 def read_all_data(aspen: Aspen):
     data = {}
 
     blocks = list(
         get_all_children(
             aspen.Application.Tree.FindNode(r"\Data\Blocks"), r"\Data\Blocks"
+        ))
+
+    blocks.extend(
+        get_all_children(
+            aspen.Application.Tree.FindNode(r"\Data\Streams"), r"\Data\Streams"
         )
     )
 
