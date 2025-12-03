@@ -21,7 +21,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=2.3.4" },
-    { name = "openpytea", git = "https://github.com/ggrandi/OpenPyTEA.git?branch=building" },
+    { name = "openpytea", git = "https://github.com/pbtamarona/OpenPyTEA.git" },
     { name = "pywin32", specifier = ">=311" },
     { name = "scipy", specifier = ">=1.16.3" },
 ]
@@ -307,8 +307,8 @@ wheels = [
 
 [[package]]
 name = "openpytea"
-version = "1.0.0"
-source = { git = "https://github.com/ggrandi/OpenPyTEA.git?branch=building#b36eec48da1e8d9fba957bc1d768028ae64cae75" }
+version = "1.0.1"
+source = { git = "https://github.com/pbtamarona/OpenPyTEA.git#c02c6fb577418d6f90a078d16b613f7234cb2aeb" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },

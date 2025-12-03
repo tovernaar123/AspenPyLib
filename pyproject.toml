@@ -17,4 +17,4 @@ dev = [
 ]
 
 [tool.uv.sources]
-openpytea = { git = "https://github.com/ggrandi/OpenPyTEA.git", branch = "building" }
+openpytea = { git = "https://github.com/pbtamarona/OpenPyTEA.git" }
