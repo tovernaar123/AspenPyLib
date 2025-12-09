@@ -162,7 +162,8 @@ def TEA_config(data:dict, process_type="Fluids",
               country="Netherlands",
               operator_hourly_rate=38.11,
               interest_rate=0.09,
-              project_lifetime="100"):
+              project_lifetime="100",
+              target_year=2023):
     '''
     Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
     see TEA documentation for additional configuration options.
