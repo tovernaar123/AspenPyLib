@@ -191,3 +191,37 @@ def read_all_data(aspen: Aspen):
         data[block.Name] = curr_data
 
     return data
+
+def GetStreams(aspen: Aspen, search: dict[str, list[Fetcher]] = DEFAULT_SEARCH):
+    data = {}
+
+    blocks = list(
+        get_all_children(
+            aspen.Application.Tree.FindNode(r"\Data\Streams"), r"\Data\Streams"
+        )
+    )
+
+    for block, path in blocks:
+        record_type = block.AttributeValue(HAP_RECORDTYPE)
+
+        print(block.Name, record_type, path)
+
+        curr_data = {
+            "path": path,
+            "record_type": record_type,
+            "data": {},
+        }
+
+        if fetchers := search.get(record_type):
+            for fetch in fetchers:
+                res = fetch(block, path)
+                curr_data["data"][res.name] = (res.data, res.unit)
+
+            if len(fetchers) != 0:
+                data[path] = curr_data
+        elif record_type == "Hierarchy":
+            child_path = r"Data\Blocks"
+            b = block.FindNode(child_path)
+            blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
+
+    return data
