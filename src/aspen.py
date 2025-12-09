@@ -67,7 +67,7 @@ def fetch_from_data(path: str, output_name: str, unit: str) -> Fetcher:
     return fetch
 
 
-def fetch_from_connection(port: str, path: str, output_name: str) -> Fetcher:
+def fetch_from_connection(port: str, path: str, output_name: str, unit: str) -> Fetcher:
     def fetch(block: Block, block_path: str):
         p, *other = [b for b, _ in get_all_children(block.FindNode(rf"Ports\{port}"))]
         assert len(other) == 0, f"Multiple blocks connected to {port}. Expected 1 but got {1 + len(other)}"
@@ -75,13 +75,13 @@ def fetch_from_connection(port: str, path: str, output_name: str) -> Fetcher:
         # need to read the stream relative to the block_path since we need to use the one from the closest hierarchy
         b = block.Application.Tree.FindNode(rf"{block_path}\..\..\Streams\{p.Value}\{path}")
 
-        return Res(output_name, b.Value, b.UnitString)
+        return Res(output_name, get_value_with_unit(b, unit), unit)
 
     return fetch
 
 
 DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
-    "Mixer": [fetch_from_connection("P(OUT)", r"Output\VOLFLMX2", "flow")],
+    "Mixer": [fetch_from_connection("P(OUT)", r"Output\VOLFLMX2", "flow", "l/sec")],
     "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Flash3": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Decanter": [],  # TODO: Not in cstr-ch4.apw
@@ -123,7 +123,7 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Dryer": [],  # TODO: Not in cstr-ch4.apw
     "Fluidbed": [],  # TODO: Not in cstr-ch4.apw
     "Cyclone": [
-        fetch_from_connection("G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate"),
+        fetch_from_connection("G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate", "cum/sec"),
     ],
     "Cfuge": [],  # TODO: Not in cstr-ch4.apw
     "Filter": [],  # TODO: Not in cstr-ch4.apw
@@ -132,7 +132,10 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
 }
 
 
-def read_data(aspen: Aspen, search: dict[str, list[Fetcher]] = DEFAULT_SEARCH):
+def read_data(aspen: Aspen, search=None):
+    if search is None:
+        search = DEFAULT_SEARCH
+
     data = {}
 
     blocks = list(
