@@ -8,6 +8,7 @@ p.s: json things are basically just wrappers right now.
 import sys
 import json
 import numpy as np
+from dataclasses import dataclass
 # someone better versed in python make this pretty
 from openpytea.plant import Plant
 from openpytea.equipment import *
@@ -99,22 +100,7 @@ def read_JSON(path)->dict:
 # ==== dictionaries ====
 
 # find process_type, category, etc. from type
-process_type_d = {
-    "Compr" : "Fluids",
-    "MCompr" : "Fluids",            # I copy-pasted the Compr attributes somebody please check this
-    "Turb" : "Fluids"               # I totally made up this type, there has to be a better way
-}
-category_d = {
-    "Compr" : 'Pumps',          # Lets all pretend compressors are actually pumps
-    "MCompr" : 'Pumps',
-    "Turb" : 'Turbines'
 
-}
-TEA_type_d = {
-    'Compr' : 'Centrifugal pump',
-    'MCompr' : 'Centrifugal pump',
-    'Turb' : 'Steam turbine'
-}
 opex_d = {
         # For the variable opex inputs, the consumption is always based on daily consumption
 
@@ -155,6 +141,66 @@ def add(d:dict, key:str, value)->None:
     else:
         d[key] = value
 
+
+
+# type EquipCategory = Literal[
+
+# ]
+
+# type EquiptType = Literal[
+
+# ]
+
+
+
+
+@dataclass
+class BlockEntry:
+    process_type: str
+    type: str
+    category: str
+
+
+EquipmentConfig: dict[str, BlockEntry] = {
+    "Mixer": BlockEntry("Fluids", "Static mixer", "Agitators & mixers"), 
+
+    "Flash2": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
+    "Flash3": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
+    "Decanter": BlockEntry("Fluids", "Horizontal CS", "Pressure vessels"), 
+    "Sep": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
+    "Sep2": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
+
+    "Heater": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"),
+    "HeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers"), 
+    "MHeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers "), 
+
+
+    "DSTWU": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "Distl": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "SCFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "RadFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "MultiFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "PetroFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "RateFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+
+}
+
+def CreateEquipment(name:str, year:int  block):
+    conf = EquipmentConfig[block['type']]
+    new_equip = Equipment(
+        name=name,
+        param=block["parameter"],
+        process_type=conf.process_type,
+        category=conf.category, # the type of block category
+        type=conf.type, # the specific type
+        material=block.get('material', "Carbon steel"), # material made out of
+        num_units=1, # i assume they're not grouped
+        purchased_cost=None, # does Aspen know maybe?
+        cost_func=None, # presume aspen doesn't know
+        target_year=year, # just doing what would be default
+    )
+    return new_equip
+
 # =====================
 
 def TEA_plant(data:dict, configuration:dict):
@@ -172,19 +218,20 @@ def TEA_plant(data:dict, configuration:dict):
     production = {}
     for block_name in data:
         block = data[block_name]
+        new_equip = CreateEquipment(block_name,block)
 
-        new_equip = Equipment(
-            name=block_name,
-            param=block["parameter"],
-            process_type=process_type_d[block['type']],
-            category= category_d[block['type']], # the type of block category
-            type=TEA_type_d[block['type']], # the specific type
-            material=block.get('material', "Carbon steel"), # material made out of
-            num_units=1, # i assume they're not grouped
-            purchased_cost=None, # does Aspen know maybe?
-            cost_func= None, # presume aspen doesn't know
-            target_year= 2023, # just doing what would be default
-        )
+        # new_equip = Equipment(
+        #     name=block_name,
+        #     param=block["parameter"],
+        #     process_type=process_type_d[block['type']],
+        #     category= category_d[block['type']], # the type of block category
+        #     type=TEA_type_d[block['type']], # the specific type
+        #     material=block.get('material', "Carbon steel"), # material made out of
+        #     num_units=1, # i assume they're not grouped
+        #     purchased_cost=None, # does Aspen know maybe?
+        #     cost_func= None, # presume aspen doesn't know
+        #     target_year= 2023, # just doing what would be default
+        # )
         equip.append(new_equip)
         # do something about inputs:
         #add(opex_inputs, block['input_name'], opex_inputs) # something like this?
@@ -236,6 +283,6 @@ def main():
     pl.calculate_levelized_cost(True)
 
 
-#if __name__ == "__main__":
- #   main()
+if __name__ == "__main__":
+   main()
 
