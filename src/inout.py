@@ -157,16 +157,15 @@ def add(d:dict, key:str, value)->None:
 
 # =====================
 
-def TEA_plant(data:dict, process_type="Fluids",
+def TEA_config(data:dict, process_type="Fluids",
               daily_prod=100,       # TODO: find a better value for this
               country="Netherlands",
               operator_hourly_rate=38.11,
               interest_rate=0.09,
               project_lifetime="100"):
     '''
-    Uses the data (and some additional parameters) into the TEA plant configuration.
-    see TEA documentation for configuration options.
-    some parameters have default values.
+    Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
+    see TEA documentation for additional configuration options.
     '''
 
     # we need to overwrite the process_type, equipment, inputs,
@@ -240,7 +239,7 @@ def main():
         'plant_utilization': 0.95,
     }
 
-    pl_conf = TEA_plant(data)
+    pl_conf = TEA_config(data)
     pl_conf["plant_name"] = "test_plant"
     print(pl_conf)
     pl = Plant(pl_conf)
