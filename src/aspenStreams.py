@@ -1,4 +1,4 @@
-from aspen import Aspen, read_data
+from aspen import Aspen, read_data, get_all_children, Fetcher, DEFAULT_SEARCH, HAP_RECORDTYPE
 from pprint import pprint
 
 def GetStreams(aspen: Aspen, data = None):
@@ -23,6 +23,12 @@ def GetStreams(aspen: Aspen, data = None):
     
     # return streams
     
+
+
+
+
+
+
 if __name__ == "__main__":
     from aspen import init_aspen, run_aspen
     import sys
@@ -40,4 +46,3 @@ if __name__ == "__main__":
     print("done\ngetting streams")
     
     GetStreams(aspen=aspen)
-    
