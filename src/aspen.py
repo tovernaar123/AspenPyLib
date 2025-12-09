@@ -37,6 +37,7 @@ HAP_RECORDTYPE = 6
 HAP_INOUT = 14
 HAP_UNITROW = 2
 HAP_UNITCOL = 3
+HAP_HASCHILDREN = 38
 
 Block: TypeAlias = Any
 
@@ -229,36 +230,45 @@ def read_all_data(aspen: Aspen):
 
     return data
 
-def GetStreams(aspen: Aspen, search: dict[str, list[Fetcher]] = DEFAULT_SEARCH):
+
+def StreamSearch(aspen,path):
     data = {}
 
-    blocks = list(
+    stream = aspen.Application.Tree.FindNode(rf"{path}")
+
+    port = stream.FindNode(rf"{path}\Ports\SOURCE")
+    
+    if int(port.AttributeValue(HAP_HASCHILDREN)) == 0:
+        print(rf"{stream} is parentless")
+        data[rf"{data}"] = {}
+        data[rf"{data}"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+                
+    return data
+            
+    
+def GetStreams(aspen: Aspen):
+    #todo catfeed is fucked up
+
+    data = {}
+    streams = list(
         get_all_children(
             aspen.Application.Tree.FindNode(r"\Data\Streams"), r"\Data\Streams"
+        )
+    )
+    blocks = list(
+        get_all_children(
+            aspen.Application.Tree.FindNode(r"\Data\Blocks"), r"\Data\Blocks"
         )
     )
 
     for block, path in blocks:
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
-        print(block.Name, record_type, path)
-
-        curr_data = {
-            "path": path,
-            "record_type": record_type,
-            "data": {},
-        }
-
-        if fetchers := search.get(record_type):
-            for fetch in fetchers:
-                res = fetch(block, path)
-                curr_data["data"][res.name] = (res.data, res.unit)
-
-            if len(fetchers) != 0:
-                data[path] = curr_data
-        elif record_type == "Hierarchy":
+        if record_type == "Hierarchy":
             child_path = r"Data\Blocks"
             b = block.FindNode(child_path)
-            blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
+            block.extend(get_all_children(b, rf"{path}\{child_path}"))
+            streams.extend(get_all_children(rf"{path}\Data\Streams",rf"{path}\Data\Streams"))
+    
 
     return data
