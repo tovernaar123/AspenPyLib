@@ -157,15 +157,21 @@ def add(d:dict, key:str, value)->None:
 
 # =====================
 
-def TEA_plant(data:dict, configuration:dict):
+def TEA_plant(data:dict, process_type="Fluids",
+              daily_prod=100,       # TODO: find a better value for this
+              country="Netherlands",
+              operator_hourly_rate=38.11,
+              interest_rate=0.09,
+              project_lifetime="100"):
     '''
-    translates the data into the TEA plant.
+    Uses the data (and some additional parameters) into the TEA plant configuration.
     see TEA documentation for configuration options.
-    some configuration values are automatically overridden based on the data.
+    some parameters have default values.
     '''
 
     # we need to overwrite the process_type, equipment, inputs,
     # and i guess plant_utilization?
+    configuration = dict()
 
     equip = []
     opex_inputs = {} # because this isn't stored in the equipment in TEA
@@ -201,23 +207,25 @@ def TEA_plant(data:dict, configuration:dict):
     #     opex_inputs_verbose[in_name] = dict_val
 
     # configuration['variable_opex_inputs'] = opex_inputs_verbose
-    configuration['process_type'] = 'Fluids' # change based on blocks?
-    configuration['daily_prod'] = production['count'] # TEMPORARY
-    configuration['country'] = 'Netherlands' # User input
+    configuration['process_type'] = process_type # change based on blocks?
+    configuration['daily_prod'] = daily_prod # TEMPORARY
+    configuration['country'] = country # User input
 
 
     # This is going to need be made from the streams / blocks
     configuration["variable_opex_inputs"] = opex_d
-    configuration['operator_hourly_rate'] = 38.11 # User input
-    configuration['interest_rate'] = 0.09 # User input
+    configuration['operator_hourly_rate'] = operator_hourly_rate # User input
+    configuration['interest_rate'] = interest_rate # User input
 
-    return Plant(configuration)
+    configuration["project_lifetime"] = project_lifetime
+
+    return configuration
 
 
 def main():
     data = {"dummy_block":{
             'parameter' : 78, # in this case volume (check when making data)
-            'type' : 'compr',
+            'type' : 'Compr',
             'material' : 'Aluminum',
             'input_name': "electricity",
             'input_amount' : 6,
@@ -232,10 +240,13 @@ def main():
         'plant_utilization': 0.95,
     }
 
-    pl = TEA_plant(data, configuration)
+    pl_conf = TEA_plant(data)
+    pl_conf["plant_name"] = "test_plant"
+    print(pl_conf)
+    pl = Plant(pl_conf)
     pl.calculate_levelized_cost(True)
 
 
-#if __name__ == "__main__":
- #   main()
+if __name__ == "__main__":
+    main()
 
