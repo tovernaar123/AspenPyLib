@@ -241,16 +241,16 @@ def StreamSearch(stream,path):
     
     port = stream.FindNode(rf"Ports\SOURCE")
     # print(port)
-    print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
+    # print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
     
     if port.AttributeValue(HAP_HASCHILDREN) == False:
-        print(rf"   {path} is parentless")
+        # print(rf"   {path} is parentless")
         data[rf"{path}\Ports\SOURCE"] = {}
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
             data[rf"{path}\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
         else:
             data[rf"{path}\Ports\SOURCE"]["cost/h"] = 0
-        print(f"cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
+        # print(f"cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
                 
     return data
             
