@@ -278,13 +278,14 @@ def GetStreams(aspen: Aspen):
         if record_type == "Hierarchy":
             child_path = r"Data\Blocks"
             b = block.FindNode(child_path)
+            s = block.FindNode(r"Data\Streams")
             blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
             print(rf"get_all_children(b,{path}\Data\Streams)")
-            streams.extend(get_all_children(b,rf"{path}\Data\Streams"))
-    print(streams)
+            streams.extend(get_all_children(s,rf"{path}\Data\Streams"))
+    # print(streams)
     for (stream, path) in streams:
         # print(stream)
-        print("\n-----",path)
+        # print("\n-----",path,"----- type:",type(stream))
         data.update(StreamSearch(stream=stream,path=path))
         # print(data)
     
