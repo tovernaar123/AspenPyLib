@@ -231,17 +231,26 @@ def read_all_data(aspen: Aspen):
     return data
 
 
-def StreamSearch(aspen,path):
+def StreamSearch(stream,path):
     data = {}
 
-    stream = aspen.Application.Tree.FindNode(rf"{path}")
+    # stream = aspen.Application.Tree.FindNode(rf"{path}")
 
-    port = stream.FindNode(rf"{path}\Ports\SOURCE")
+    # print(stream)
+    # print(rf"stream.FindNode({path}\Ports\SOURCE)")
     
-    if int(port.AttributeValue(HAP_HASCHILDREN)) == 0:
-        print(rf"{stream} is parentless")
-        data[rf"{data}"] = {}
-        data[rf"{data}"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+    port = stream.FindNode(rf"Ports\SOURCE")
+    # print(port)
+    print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
+    
+    if port.AttributeValue(HAP_HASCHILDREN) == False:
+        print(rf"   {path} is parentless")
+        data[rf"{path}\Ports\SOURCE"] = {}
+        if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
+            data[rf"{path}\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+        else:
+            data[rf"{path}\Ports\SOURCE"]["cost/h"] = 0
+        print(f"cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
                 
     return data
             
@@ -262,13 +271,30 @@ def GetStreams(aspen: Aspen):
     )
 
     for block, path in blocks:
+        # print(block)
+        
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
         if record_type == "Hierarchy":
             child_path = r"Data\Blocks"
             b = block.FindNode(child_path)
-            block.extend(get_all_children(b, rf"{path}\{child_path}"))
-            streams.extend(get_all_children(rf"{path}\Data\Streams",rf"{path}\Data\Streams"))
+            blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
+            print(rf"get_all_children(b,{path}\Data\Streams)")
+            streams.extend(get_all_children(b,rf"{path}\Data\Streams"))
+    print(streams)
+    for (stream, path) in streams:
+        # print(stream)
+        print("\n-----",path)
+        data.update(StreamSearch(stream=stream,path=path))
+        # print(data)
     
 
     return data
+
+if __name__ == "__main__":
+    from os.path import abspath
+    import sys
+    from pprint import pprint
+    aspen = init_aspen(abspath(sys.argv[1]))
+    print(aspen)
+    pprint(GetStreams(aspen=aspen))
