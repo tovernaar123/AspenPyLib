@@ -231,7 +231,7 @@ def read_all_data(aspen: Aspen):
     return data
 
 
-def StreamSearch(stream,path):
+def StreamSearch(stream,path,vocal = True):
     data = {}
 
     # stream = aspen.Application.Tree.FindNode(rf"{path}")
@@ -241,21 +241,24 @@ def StreamSearch(stream,path):
     
     port = stream.FindNode(rf"Ports\SOURCE")
     # print(port)
-    # print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
+    if vocal:
+        print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
     
     if port.AttributeValue(HAP_HASCHILDREN) == False:
-        # print(rf"   {path} is parentless")
+        if vocal:
+            print(rf"   {path} is parentless")
         data[rf"{path}\Ports\SOURCE"] = {}
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
             data[rf"{path}\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
         else:
             data[rf"{path}\Ports\SOURCE"]["cost/h"] = 0
-        # print(f"cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
+        if vocal:
+            print(f"    cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
                 
     return data
             
     
-def GetStreams(aspen: Aspen):
+def GetStreams(aspen: Aspen,vocal = True):
     #todo catfeed is fucked up
 
     data = {}
@@ -280,14 +283,15 @@ def GetStreams(aspen: Aspen):
             b = block.FindNode(child_path)
             s = block.FindNode(r"Data\Streams")
             blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
-            # print(rf"get_all_children(b,{path}\Data\Streams)")
             streams.extend(get_all_children(s,rf"{path}\Data\Streams"))
-    # print(streams)
+    if vocal:
+        print(f"streams found: {streams}")
     for (stream, path) in streams:
-        # print(stream)
-        # print("\n-----",path,"----- type:",type(stream))
-        data.update(StreamSearch(stream=stream,path=path))
-        # print(data)
+        if vocal:
+            # print(stream)
+            print("\n-----",path,"----- type:",type(stream))
+        data.update(StreamSearch(stream=stream,path=path,vocal = vocal))
+
     
 
     return data
