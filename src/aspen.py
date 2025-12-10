@@ -280,7 +280,7 @@ def GetStreams(aspen: Aspen):
             b = block.FindNode(child_path)
             s = block.FindNode(r"Data\Streams")
             blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
-            print(rf"get_all_children(b,{path}\Data\Streams)")
+            # print(rf"get_all_children(b,{path}\Data\Streams)")
             streams.extend(get_all_children(s,rf"{path}\Data\Streams"))
     # print(streams)
     for (stream, path) in streams:
