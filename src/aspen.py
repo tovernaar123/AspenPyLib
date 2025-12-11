@@ -232,6 +232,14 @@ def read_all_data(aspen: Aspen):
     return data
 
 def MassSearch(MASSFLOW,vocal = True)->dict:
+    """
+    this function returns a dictionary with all Massflows in the current directory in kg/h
+    
+    :param MASSFLOW: an Aspen object
+    :param vocal: BOOL print useless stuff
+    :return: rerturns an dictionary with all massflows
+    :rtype: dict
+    """
     data = {r"\CIPSD":{},
             r"\MIXED":{}}
     
@@ -292,6 +300,14 @@ def StreamSearch(stream,path,vocal = True):
             
     
 def GetStreams(aspen: Aspen,vocal = True):
+    """
+    This functions creates an dictionary with as indices the path to the objects
+    MASSFLOW is in kg/h
+    
+    :param aspen: Description
+    :type aspen: Aspen
+    :param vocal: Description
+    """
     #todo catfeed is fucked up
 
     data = {}
