@@ -326,7 +326,9 @@ def GetStreams(aspen: Aspen,vocal = True):
         data.update(StreamSearch(stream=stream,path=path,vocal = vocal))
 
     
-
+    if vocal:
+        pprint(data)
+        
     return data
 
 if __name__ == "__main__":
