@@ -38,6 +38,7 @@ HAP_INOUT = 14
 HAP_UNITROW = 2
 HAP_UNITCOL = 3
 HAP_HASCHILDREN = 38
+HAP_VALUE = 0
 
 Block: TypeAlias = Any
 
@@ -230,6 +231,34 @@ def read_all_data(aspen: Aspen):
 
     return data
 
+def MassSearch(MASSFLOW,vocal = True)->dict:
+    data = {r"\CIPSD":{},
+            r"\MIXED":{}}
+    
+    # masses = list(
+    #     get_all_children(
+    #         stream.FindNode(rf"Output\MASSFLOW\CIPSD"), rf"Output\MASSFLOW\CIPSD"
+    #     )
+    # )
+    MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
+    CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
+    for mass,path in CIPSD:
+        if mass.AttributeValue(HAP_VALUE) != None:
+            data[r"\CIPSD"][rf"{path[1:]}"] = mass.AttributeValue(HAP_VALUE)
+        else:
+            data[r"\CIPSD"][rf"{path[1:]}"] = 0
+    
+    
+    for mass,path in MIXED:
+        if mass.AttributeValue(HAP_VALUE) != None:
+            data[r"\MIXED"][rf"{path[1:]}"] = mass.AttributeValue(HAP_VALUE)
+        else:
+            data[r"\MIXED"][rf"{path[1:]}"] = 0
+            
+            
+    return data
+    # mass = mass.Findnode(rf"Output/MASSFLOW/CIPSD")
+
 
 def StreamSearch(stream,path,vocal = True):
     data = {}
@@ -247,13 +276,17 @@ def StreamSearch(stream,path,vocal = True):
     if port.AttributeValue(HAP_HASCHILDREN) == False:
         if vocal:
             print(rf"   {path} is parentless")
-        data[rf"{path}\Ports\SOURCE"] = {}
+        data[rf"{path}"] = {}
+        data[rf"{path}"][r"\Ports\SOURCE"] = {}
+        data[rf"{path}"][r"\Output\MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
+        
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
-            data[rf"{path}\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+            data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+            
         else:
-            data[rf"{path}\Ports\SOURCE"]["cost/h"] = 0
+            data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"] = 0
         if vocal:
-            print(f"    cost/h: {data[rf"{path}\Ports\SOURCE"]["cost/h"]}")
+            print(f"    cost/h: {data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"]}")
                 
     return data
             
