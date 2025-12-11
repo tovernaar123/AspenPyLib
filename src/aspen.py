@@ -337,4 +337,4 @@ if __name__ == "__main__":
     from pprint import pprint
     aspen = init_aspen(abspath(sys.argv[1]))
     print(aspen)
-    pprint(GetStreams(aspen=aspen))
+    pprint(GetStreams(aspen=aspen,vocal=False))
