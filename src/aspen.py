@@ -243,11 +243,7 @@ def MassSearch(MASSFLOW,vocal = True)->dict:
     data = {r"\CIPSD":{},
             r"\MIXED":{}}
     
-    # masses = list(
-    #     get_all_children(
-    #         stream.FindNode(rf"Output\MASSFLOW\CIPSD"), rf"Output\MASSFLOW\CIPSD"
-    #     )
-    # )
+
     MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
     CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
     for mass,path in CIPSD:
@@ -265,16 +261,12 @@ def MassSearch(MASSFLOW,vocal = True)->dict:
             
             
     return data
-    # mass = mass.Findnode(rf"Output/MASSFLOW/CIPSD")
+
 
 
 def StreamSearch(stream,path,vocal = True):
     data = {}
 
-    # stream = aspen.Application.Tree.FindNode(rf"{path}")
-
-    # print(stream)
-    # print(rf"stream.FindNode({path}\Ports\SOURCE)")
     
     port = stream.FindNode(rf"Ports\SOURCE")
     # print(port)
@@ -291,8 +283,7 @@ def StreamSearch(stream,path,vocal = True):
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
             data[rf"{path}"][r"SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
             
-        # else:
-        #     data[rf"{path}"][r"SOURCE"]["cost/h"] = 0
+
         if vocal:
             print(f"    cost/h: {data[rf"{path}"][r"SOURCE"]["cost/h"]}")
                 
@@ -307,7 +298,7 @@ def GetStreams(aspen: Aspen,vocal = True):
     :param aspen: the Asping object with which the file is treveresd
     :param vocal: True makes the function print more information
     """
-    #todo catfeed is fucked up
+
 
     data = {}
     streams = list(
@@ -322,7 +313,7 @@ def GetStreams(aspen: Aspen,vocal = True):
     )
 
     for block, path in blocks:
-        # print(block)
+
         
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
@@ -336,7 +327,7 @@ def GetStreams(aspen: Aspen,vocal = True):
         print(f"streams found: {streams}")
     for (stream, path) in streams:
         if vocal:
-            # print(stream)
+
             print("\n-----",path,"----- type:",type(stream))
         data.update(StreamSearch(stream=stream,path=path,vocal = vocal))
 
