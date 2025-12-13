@@ -304,9 +304,8 @@ def GetStreams(aspen: Aspen,vocal = True):
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
     
-    :param aspen: Description
-    :type aspen: Aspen
-    :param vocal: Description
+    :param aspen: the Asping object with which the file is treveresd
+    :param vocal: True makes the function print more information
     """
     #todo catfeed is fucked up
 
