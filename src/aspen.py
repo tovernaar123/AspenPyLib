@@ -251,15 +251,15 @@ def MassSearch(MASSFLOW,vocal = True)->dict:
     MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
     CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
     for mass,path in CIPSD:
-        if mass.AttributeValue(HAP_VALUE) != None:
-            data[r"\CIPSD"][rf"{path[1:]}"] = mass.AttributeValue(HAP_VALUE)
+        if mass.Value != None:
+            data[r"\CIPSD"][rf"{path[1:]}"] = mass.Value
         else:
             data[r"\CIPSD"][rf"{path[1:]}"] = 0
     
     
     for mass,path in MIXED:
-        if mass.AttributeValue(HAP_VALUE) != None:
-            data[r"\MIXED"][rf"{path[1:]}"] = mass.AttributeValue(HAP_VALUE)
+        if mass.Value != None:
+            data[r"\MIXED"][rf"{path[1:]}"] = mass.Value
         else:
             data[r"\MIXED"][rf"{path[1:]}"] = 0
             
