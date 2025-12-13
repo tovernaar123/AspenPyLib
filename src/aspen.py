@@ -285,16 +285,16 @@ def StreamSearch(stream,path,vocal = True):
         if vocal:
             print(rf"   {path} is parentless")
         data[rf"{path}"] = {}
-        data[rf"{path}"][r"\Ports\SOURCE"] = {}
-        data[rf"{path}"][r"\Output\MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
+        data[rf"{path}"][r"SOURCE"] = {"cost/h":0}
+        data[rf"{path}"][r"MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
         
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
-            data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
             
-        else:
-            data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"] = 0
+        # else:
+        #     data[rf"{path}"][r"SOURCE"]["cost/h"] = 0
         if vocal:
-            print(f"    cost/h: {data[rf"{path}"][r"\Ports\SOURCE"]["cost/h"]}")
+            print(f"    cost/h: {data[rf"{path}"][r"SOURCE"]["cost/h"]}")
                 
     return data
             
