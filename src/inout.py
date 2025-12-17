@@ -185,14 +185,16 @@ def createOPEXdict(streamData:dict, blockDataDict:dict)->dict:
                 opexDict[rf"{subsName}"]["price"] = 0 #TODO: Nowhere in Aspen, user defined?
         
     return opexDict
-
+    
+"""
+### TESTING PURPOSES ###
 from os.path import abspath
 ASPEN = asp.init_aspen(abspath(sys.argv[1]))
 testdict = {}
 testdict = asp.GetStreams(ASPEN)
 blockData = asp.read_data(ASPEN)
 print(createOPEXdict(testdict, blockData))
-
+"""
 # ======== utils =========
 
 def add(d:dict, key:str, value)->None:
