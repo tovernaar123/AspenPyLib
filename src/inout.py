@@ -12,6 +12,7 @@ import numpy as np
 from openpytea.plant import Plant
 from openpytea.equipment import *
 from openpytea.analysis import *
+import aspen as asp
 """
 TODO:
 - [] add process plant creation
@@ -115,6 +116,7 @@ TEA_type_d = {
     'MCompr' : 'Centrifugal pump',
     'Turb' : 'Steam turbine'
 }
+"""
 opex_d = {
         # For the variable opex inputs, the consumption is always based on daily consumption
 
@@ -145,6 +147,51 @@ opex_d = {
             "price_min": 1e-5,
         },
 }
+"""
+
+def createOPEXdict(streamData:dict, blockDataDict:dict)->dict:
+    opexDict = {}
+
+    netPowerConsumption = 0 #in kW!
+    for block in blockDataDict.values():
+        try:
+            netPowerConsumption += block["data"]["Net Power"][0]
+        except KeyError:
+            pass
+    opexDict["electricity"] = {
+        "consumption" : netPowerConsumption * 24,
+        "price" : 7.5 #per kWh! TODO what is the real price?
+    }
+    
+    for stream in list(streamData.keys()):
+        streamName = stream.split(r"\\")[-1]
+        cost = streamData[rf"{stream}"]["SOURCE"]["cost/h"]
+        if cost != 0:
+            consumption = 0
+            for flowrates in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
+                consumption += streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{flowrates}"]
+            opexDict[rf"{streamName}"] = {}
+            opexDict[rf"{streamName}"]["consumption"] = consumption * 24 #DAILY
+            opexDict[rf"{streamName}"]["price"] = cost / consumption #was hourly, now PER UNIT
+        else:
+            for subsName in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
+                if subsName not in opexDict:
+                    opexDict[subsName] = {
+                        "consumption": 0,
+                        "price": 0
+                    }
+
+                opexDict[rf"{subsName}"]["consumption"] += (streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{subsName}"] * 24) #DAILY
+                opexDict[rf"{subsName}"]["price"] = 0 #TODO: Nowhere in Aspen, user defined?
+        
+    return opexDict
+
+from os.path import abspath
+ASPEN = asp.init_aspen(abspath(sys.argv[1]))
+testdict = {}
+testdict = asp.GetStreams(ASPEN)
+blockData = asp.read_data(ASPEN)
+print(createOPEXdict(testdict, blockData))
 
 # ======== utils =========
 

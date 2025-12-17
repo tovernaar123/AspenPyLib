@@ -290,7 +290,7 @@ def StreamSearch(stream,path,vocal = True):
     return data
             
     
-def GetStreams(aspen: Aspen,vocal = True):
+def GetStreams(aspen: Aspen,vocal = False):
     """
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
@@ -337,10 +337,12 @@ def GetStreams(aspen: Aspen,vocal = True):
         
     return data
 
+"""
 if __name__ == "__main__":
     from os.path import abspath
     import sys
     from pprint import pprint
     aspen = init_aspen(abspath(sys.argv[1]))
     print(aspen)
-    pprint(GetStreams(aspen=aspen,vocal=False))
+    pprint(GetStreams(aspen=aspen,vocal=True))
+"""
