@@ -186,12 +186,14 @@ def createOPEXdict(streamData:dict, blockDataDict:dict)->dict:
         
     return opexDict
 
+"""
 from os.path import abspath
 ASPEN = asp.init_aspen(abspath(sys.argv[1]))
 testdict = {}
 testdict = asp.GetStreams(ASPEN)
 blockData = asp.read_data(ASPEN)
 print(createOPEXdict(testdict, blockData))
+"""
 
 # ======== utils =========
 
@@ -254,7 +256,7 @@ def TEA_plant(data:dict, configuration:dict):
 
 
     # This is going to need be made from the streams / blocks
-    configuration["variable_opex_inputs"] = opex_d
+    configuration["variable_opex_inputs"] = createOPEXdict(asp.dict, asp.blockData)
     configuration['operator_hourly_rate'] = 38.11 # User input
     configuration['interest_rate'] = 0.09 # User input
 

@@ -337,12 +337,15 @@ def GetStreams(aspen: Aspen,vocal = False):
         
     return data
 
+#UNCOMMENT THIS IF YOU WANT TO USE inout.py!
 """
 if __name__ == "__main__":
     from os.path import abspath
     import sys
     from pprint import pprint
-    aspen = init_aspen(abspath(sys.argv[1]))
-    print(aspen)
-    pprint(GetStreams(aspen=aspen,vocal=True))
+    Aspen = init_aspen(abspath(sys.argv[1]))
+    dict = GetStreams(Aspen)
+    blockData = read_data(Aspen)
+    print(Aspen)
+    pprint(GetStreams(aspen=Aspen,vocal=True))
 """
