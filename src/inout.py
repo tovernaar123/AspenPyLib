@@ -190,7 +190,7 @@ def TEA_config(data:dict, variable_opex_inputs:OpexDict,
     configuration['country'] = country 
 
 
-    configuration["variable_opex_inputs"] = variable_opex_inputs 
+    configuration["variable_opex_inputs"] = variable_opex_inputs
     configuration['operator_hourly_rate'] = operator_hourly_rate 
     configuration['interest_rate'] = interest_rate
 
