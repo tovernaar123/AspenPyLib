@@ -174,18 +174,20 @@ EquipmentConfig: dict[str, BlockEntry] = {
     "HeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers"), 
     "MHeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers "), 
 
+    #TODO figure out how to parse columns
+    # "DSTWU": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "Distl": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "SCFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "RadFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "MultiFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "PetroFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    # "RateFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
 
-    "DSTWU": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "Distl": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "SCFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "RadFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "MultiFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "PetroFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    "RateFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
+    "RYield": BlockEntry("Fluids", "Jacketed agitated",  "Reactors")
 
 }
 
-def CreateEquipment(name:str, year:int  block):
+def CreateEquipment(name:str, year:int , block):
     conf = EquipmentConfig[block['type']]
     new_equip = Equipment(
         name=name,
@@ -218,7 +220,7 @@ def TEA_plant(data:dict, configuration:dict):
     production = {}
     for block_name in data:
         block = data[block_name]
-        new_equip = CreateEquipment(block_name,block)
+        new_equip = CreateEquipment(block_name,2026, block)
 
         # new_equip = Equipment(
         #     name=block_name,
