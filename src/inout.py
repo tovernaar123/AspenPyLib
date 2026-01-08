@@ -149,7 +149,7 @@ opex_d = {
 }
 """
 
-def createOPEXdict(streamData:dict, blockDataDict:dict)->dict:
+def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
     opexDict = {}
 
     netPowerConsumption = 0 #in kW!
@@ -182,7 +182,10 @@ def createOPEXdict(streamData:dict, blockDataDict:dict)->dict:
                     }
 
                 opexDict[rf"{subsName}"]["consumption"] += (streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{subsName}"] * 24) #DAILY
-                opexDict[rf"{subsName}"]["price"] = 0 #TODO: Nowhere in Aspen, user defined?
+                if rf"{subsName}" in prices:
+                    opexDict[rf"{subsName}"]["price"] =  prices[rf"{subsName}"]
+                else:
+                    sys.exit(rf"No given price for {subsName}")
         
     return opexDict
     
@@ -207,7 +210,7 @@ def add(d:dict, key:str, value)->None:
 
 # =====================
 
-def TEA_plant(data:dict, configuration:dict):
+def TEA_plant(data:dict, configuration:dict, opexDict:dict):
     '''
     translates the data into the TEA plant.
     see TEA documentation for configuration options.
@@ -257,7 +260,7 @@ def TEA_plant(data:dict, configuration:dict):
 
 
     # This is going to need be made from the streams / blocks
-    configuration["variable_opex_inputs"] = createOPEXdict(asp.dict, asp.blockData)
+    configuration["variable_opex_inputs"] = opexDict #variable opexDict
     configuration['operator_hourly_rate'] = 38.11 # User input
     configuration['interest_rate'] = 0.09 # User input
 
