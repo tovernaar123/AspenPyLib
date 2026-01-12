@@ -290,7 +290,7 @@ def StreamSearch(stream,path,vocal = True):
     return data
             
     
-def GetStreams(aspen: Aspen,vocal = False):
+def GetStreams(aspen: Aspen,vocal = True):
     """
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
