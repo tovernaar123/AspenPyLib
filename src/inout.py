@@ -211,13 +211,13 @@ def add(d:dict, key:str, value)->None:
 
 def TEA_plant(data:dict, configuration:dict, opexDict:dict):
     '''
-    translates the data into the TEA plant.
-    see TEA documentation for configuration options.
-    some configuration values are automatically overridden based on the data.
+    Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
+    see TEA documentation for additional configuration options.
     '''
 
     # we need to overwrite the process_type, equipment, inputs,
     # and i guess plant_utilization?
+    configuration = dict()
 
     equip = []
     opex_inputs = {} # because this isn't stored in the equipment in TEA
@@ -253,9 +253,9 @@ def TEA_plant(data:dict, configuration:dict, opexDict:dict):
     #     opex_inputs_verbose[in_name] = dict_val
 
     # configuration['variable_opex_inputs'] = opex_inputs_verbose
-    configuration['process_type'] = 'Fluids' # change based on blocks?
-    configuration['daily_prod'] = production['count'] # TEMPORARY
-    configuration['country'] = 'Netherlands' # User input
+    configuration['process_type'] = process_type # change based on blocks?
+    configuration['daily_prod'] = daily_prod # TEMPORARY
+    configuration['country'] = country # User input
 
 
     # This is going to need be made from the streams / blocks
@@ -263,13 +263,15 @@ def TEA_plant(data:dict, configuration:dict, opexDict:dict):
     configuration['operator_hourly_rate'] = 38.11 # User input
     configuration['interest_rate'] = 0.09 # User input
 
-    return Plant(configuration)
+    configuration["project_lifetime"] = project_lifetime
+
+    return configuration
 
 
 def main():
     data = {"dummy_block":{
             'parameter' : 78, # in this case volume (check when making data)
-            'type' : 'compr',
+            'type' : 'Compr',
             'material' : 'Aluminum',
             'input_name': "electricity",
             'input_amount' : 6,
@@ -284,10 +286,13 @@ def main():
         'plant_utilization': 0.95,
     }
 
-    pl = TEA_plant(data, configuration)
+    pl_conf = TEA_config(data)
+    pl_conf["plant_name"] = "test_plant"
+    print(pl_conf)
+    pl = Plant(pl_conf)
     pl.calculate_levelized_cost(True)
 
 
-#if __name__ == "__main__":
- #   main()
+if __name__ == "__main__":
+    main()
 
