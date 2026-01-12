@@ -12,7 +12,6 @@ import numpy as np
 from openpytea.plant import Plant
 from openpytea.equipment import *
 from openpytea.analysis import *
-import aspen as asp
 """
 TODO:
 - [] add process plant creation
