@@ -37,6 +37,8 @@ HAP_RECORDTYPE = 6
 HAP_INOUT = 14
 HAP_UNITROW = 2
 HAP_UNITCOL = 3
+HAP_HASCHILDREN = 38
+HAP_VALUE = 0
 
 Block: TypeAlias = Any
 
@@ -228,3 +230,117 @@ def read_all_data(aspen: Aspen):
         data[block.Name] = curr_data
 
     return data
+
+def MassSearch(MASSFLOW,vocal = True)->dict:
+    """
+    this function returns a dictionary with all Massflows in the current directory in kg/h
+    
+    :param MASSFLOW: an Aspen object
+    :param vocal: BOOL print useless stuff
+    :return: rerturns an dictionary with all massflows
+    :rtype: dict
+    """
+    data = {r"\CIPSD":{},
+            r"\MIXED":{}}
+    
+
+    MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
+    CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
+    for mass,path in CIPSD:
+        if mass.Value != None:
+            data[r"\CIPSD"][rf"{path[1:]}"] = mass.Value
+        else:
+            data[r"\CIPSD"][rf"{path[1:]}"] = 0
+    
+    
+    for mass,path in MIXED:
+        if mass.Value != None:
+            data[r"\MIXED"][rf"{path[1:]}"] = mass.Value
+        else:
+            data[r"\MIXED"][rf"{path[1:]}"] = 0
+            
+            
+    return data
+
+
+
+def StreamSearch(stream,path,vocal = True):
+    data = {}
+
+    
+    port = stream.FindNode(rf"Ports\SOURCE")
+    # print(port)
+    if vocal:
+        print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
+    
+    if port.AttributeValue(HAP_HASCHILDREN) == False:
+        if vocal:
+            print(rf"   {path} is parentless")
+        data[rf"{path}"] = {}
+        data[rf"{path}"][r"SOURCE"] = {"cost/h":0}
+        data[rf"{path}"][r"MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
+        
+        if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
+            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+            
+
+        if vocal:
+            print(f"    cost/h: {data[rf"{path}"][r"SOURCE"]["cost/h"]}")
+                
+    return data
+            
+    
+def GetStreams(aspen: Aspen,vocal = True):
+    """
+    This functions creates an dictionary with as indices the path to the objects
+    MASSFLOW is in kg/h
+    
+    :param aspen: the Asping object with which the file is treveresd
+    :param vocal: True makes the function print more information
+    """
+
+
+    data = {}
+    streams = list(
+        get_all_children(
+            aspen.Application.Tree.FindNode(r"\Data\Streams"), r"\Data\Streams"
+        )
+    )
+    blocks = list(
+        get_all_children(
+            aspen.Application.Tree.FindNode(r"\Data\Blocks"), r"\Data\Blocks"
+        )
+    )
+
+    for block, path in blocks:
+
+        
+        record_type = block.AttributeValue(HAP_RECORDTYPE)
+
+        if record_type == "Hierarchy":
+            child_path = r"Data\Blocks"
+            b = block.FindNode(child_path)
+            s = block.FindNode(r"Data\Streams")
+            blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
+            streams.extend(get_all_children(s,rf"{path}\Data\Streams"))
+    if vocal:
+        print(f"streams found: {streams}")
+    for (stream, path) in streams:
+        if vocal:
+
+            print("\n-----",path,"----- type:",type(stream))
+        data.update(StreamSearch(stream=stream,path=path,vocal = vocal))
+
+    
+    if vocal:
+        pprint(data)
+        
+    return data
+
+if __name__ == "__main__":
+    from os.path import abspath
+    import sys
+    from pprint import pprint
+    aspen = init_aspen(abspath(sys.argv[1]))
+    print(aspen)
+    pprint(GetStreams(aspen=aspen,vocal=False))

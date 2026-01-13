@@ -156,23 +156,24 @@ def add(d:dict, key:str, value)->None:
 
 @dataclass
 class BlockEntry:
-    process_type: str
     type: str
     category: str
+    paramater_name:str
 
 
 EquipmentConfig: dict[str, BlockEntry] = {
-    "Mixer": BlockEntry("Fluids", "Static mixer", "Agitators & mixers"), 
+    "Mixer": BlockEntry("Static mixer", "Agitators & mixers", "flow"), 
 
-    "Flash2": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
-    "Flash3": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
-    "Decanter": BlockEntry("Fluids", "Horizontal CS", "Pressure vessels"), 
-    "Sep": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
-    "Sep2": BlockEntry("Fluids", "Vertical CS", "Pressure vessels"), 
+    "Flash2": BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"), 
+    "Flash3": BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"), 
+    
+    "Decanter": BlockEntry("Horizontal CS", "Pressure vessels", "flow"), 
+    "Sep": BlockEntry("Vertical CS", "Pressure vessels", "flow"), 
+    "Sep2": BlockEntry("Vertical CS", "Pressure vessels", "flow"), 
 
-    "Heater": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"),
-    "HeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers"), 
-    "MHeatX": BlockEntry("Fluids", "U-tube shell & tube", "Heat exchangers "), 
+    "Heater": BlockEntry("Furnace, cylindrical", "Boilers & Furnaces", "Heating Duty"),
+    "HeatX": BlockEntry("U-tube shell & tube", "Heat Transfer Area", "flow"), 
+    "MHeatX": BlockEntry("U-tube shell & tube", "Duty", "flow"), 
 
     #TODO figure out how to parse columns
     # "DSTWU": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
@@ -183,16 +184,16 @@ EquipmentConfig: dict[str, BlockEntry] = {
     # "PetroFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
     # "RateFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
 
-    "RYield": BlockEntry("Fluids", "Jacketed agitated",  "Reactors")
+    "RYield": BlockEntry("Jacketed agitated",  "Reactors", "flow")
 
 }
 
-def CreateEquipment(name:str, year:int , block):
+def CreateEquipment(name:str, year:int ,process_type:str, block):
     conf = EquipmentConfig[block['type']]
     new_equip = Equipment(
         name=name,
-        param=block["parameter"],
-        process_type=conf.process_type,
+        param=block[conf.paramater_name],
+        process_type=process_type,
         category=conf.category, # the type of block category
         type=conf.type, # the specific type
         material=block.get('material', "Carbon steel"), # material made out of
@@ -205,38 +206,29 @@ def CreateEquipment(name:str, year:int , block):
 
 # =====================
 
-def TEA_plant(data:dict, configuration:dict):
+def TEA_config(data:dict, process_type="Fluids",
+              daily_prod=100,       # TODO: find a better value for this
+              country="Netherlands",
+              operator_hourly_rate=38.11,
+              interest_rate=0.09,
+              project_lifetime="100",
+              target_year=2023):
     '''
-    translates the data into the TEA plant.
-    see TEA documentation for configuration options.
-    some configuration values are automatically overridden based on the data.
+    Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
+    see TEA documentation for additional configuration options.
     '''
 
     # we need to overwrite the process_type, equipment, inputs,
     # and i guess plant_utilization?
+    configuration = dict()
 
     equip = []
     opex_inputs = {} # because this isn't stored in the equipment in TEA
     production = {}
     for block_name in data:
         block = data[block_name]
-        new_equip = CreateEquipment(block_name,2026, block)
-
-        # new_equip = Equipment(
-        #     name=block_name,
-        #     param=block["parameter"],
-        #     process_type=process_type_d[block['type']],
-        #     category= category_d[block['type']], # the type of block category
-        #     type=TEA_type_d[block['type']], # the specific type
-        #     material=block.get('material', "Carbon steel"), # material made out of
-        #     num_units=1, # i assume they're not grouped
-        #     purchased_cost=None, # does Aspen know maybe?
-        #     cost_func= None, # presume aspen doesn't know
-        #     target_year= 2023, # just doing what would be default
-        # )
+        new_equip = CreateEquipment(block_name,target_year,process_type, block)
         equip.append(new_equip)
-        # do something about inputs:
-        #add(opex_inputs, block['input_name'], opex_inputs) # something like this?
         add(production, 'count', 1) # might be more complicated than this
 
     configuration['equipment'] = equip
@@ -250,23 +242,25 @@ def TEA_plant(data:dict, configuration:dict):
     #     opex_inputs_verbose[in_name] = dict_val
 
     # configuration['variable_opex_inputs'] = opex_inputs_verbose
-    configuration['process_type'] = 'Fluids' # change based on blocks?
-    configuration['daily_prod'] = production['count'] # TEMPORARY
-    configuration['country'] = 'Netherlands' # User input
+    configuration['process_type'] = process_type # change based on blocks?
+    configuration['daily_prod'] = daily_prod # TEMPORARY
+    configuration['country'] = country # User input
 
 
     # This is going to need be made from the streams / blocks
     configuration["variable_opex_inputs"] = opex_d
-    configuration['operator_hourly_rate'] = 38.11 # User input
-    configuration['interest_rate'] = 0.09 # User input
+    configuration['operator_hourly_rate'] = operator_hourly_rate # User input
+    configuration['interest_rate'] = interest_rate # User input
 
-    return Plant(configuration)
+    configuration["project_lifetime"] = project_lifetime
+
+    return configuration
 
 
 def main():
     data = {"dummy_block":{
             'parameter' : 78, # in this case volume (check when making data)
-            'type' : 'compr',
+            'type' : 'Compr',
             'material' : 'Aluminum',
             'input_name': "electricity",
             'input_amount' : 6,
@@ -281,7 +275,10 @@ def main():
         'plant_utilization': 0.95,
     }
 
-    pl = TEA_plant(data, configuration)
+    pl_conf = TEA_config(data)
+    pl_conf["plant_name"] = "test_plant"
+    print(pl_conf)
+    pl = Plant(pl_conf)
     pl.calculate_levelized_cost(True)
 
 
