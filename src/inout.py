@@ -115,6 +115,7 @@ TEA_type_d = {
     'MCompr' : 'Centrifugal pump',
     'Turb' : 'Steam turbine'
 }
+"""
 opex_d = {
         # For the variable opex inputs, the consumption is always based on daily consumption
 
@@ -145,6 +146,57 @@ opex_d = {
             "price_min": 1e-5,
         },
 }
+"""
+
+def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
+    opexDict = {}
+
+    netPowerConsumption = 0 #in kW!
+    for block in blockDataDict.values():
+        try:
+            netPowerConsumption += block["data"]["Net Power"][0]
+        except KeyError:
+            pass
+    opexDict["electricity"] = {
+        "consumption" : netPowerConsumption * 24,
+        "price" : 7.5 #per kWh! TODO what is the real price?
+    }
+    
+    for stream in list(streamData.keys()):
+        streamName = stream.split(r"\\")[-1]
+        cost = streamData[rf"{stream}"]["SOURCE"]["cost/h"]
+        if cost != 0:
+            consumption = 0
+            for flowrates in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
+                consumption += streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{flowrates}"]
+            opexDict[rf"{streamName}"] = {}
+            opexDict[rf"{streamName}"]["consumption"] = consumption * 24 #DAILY
+            opexDict[rf"{streamName}"]["price"] = cost / consumption #was hourly, now PER UNIT
+        else:
+            for subsName in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
+                if subsName not in opexDict:
+                    opexDict[subsName] = {
+                        "consumption": 0,
+                        "price": 0
+                    }
+
+                opexDict[rf"{subsName}"]["consumption"] += (streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{subsName}"] * 24) #DAILY
+                if rf"{subsName}" in prices:
+                    opexDict[rf"{subsName}"]["price"] =  prices[rf"{subsName}"]
+                else:
+                    sys.exit(rf"No given price for {subsName}")
+        
+    return opexDict
+    
+"""
+### TESTING PURPOSES ###
+from os.path import abspath
+ASPEN = asp.init_aspen(abspath(sys.argv[1]))
+testdict = {}
+testdict = asp.GetStreams(ASPEN)
+blockData = asp.read_data(ASPEN)
+print(createOPEXdict(testdict, blockData))
+"""
 
 # ======== utils =========
 
@@ -157,13 +209,7 @@ def add(d:dict, key:str, value)->None:
 
 # =====================
 
-def TEA_config(data:dict, process_type="Fluids",
-              daily_prod=100,       # TODO: find a better value for this
-              country="Netherlands",
-              operator_hourly_rate=38.11,
-              interest_rate=0.09,
-              project_lifetime="100",
-              target_year=2023):
+def TEA_plant(data:dict, configuration:dict, opexDict:dict):
     '''
     Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
     see TEA documentation for additional configuration options.
@@ -213,9 +259,9 @@ def TEA_config(data:dict, process_type="Fluids",
 
 
     # This is going to need be made from the streams / blocks
-    configuration["variable_opex_inputs"] = opex_d
-    configuration['operator_hourly_rate'] = operator_hourly_rate # User input
-    configuration['interest_rate'] = interest_rate # User input
+    configuration["variable_opex_inputs"] = opexDict #variable opexDict
+    configuration['operator_hourly_rate'] = 38.11 # User input
+    configuration['interest_rate'] = 0.09 # User input
 
     configuration["project_lifetime"] = project_lifetime
 
