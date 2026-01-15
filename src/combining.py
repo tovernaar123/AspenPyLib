@@ -1,32 +1,39 @@
-import sys
-from dataclasses import dataclass
-import win32com.client as win32
+import aspen
+from openpytea.plant import Plant
 import inout
-import aspenOptimizationLib as aol
+from os.path import abspath
+import sys
+from pprint import pprint
 
-if len(sys.argv) < 2:
-    print("Should be called with the name of the aspen file")
-    exit(1)
-
-# Connect to Aspen Plus
-aspen = win32.gencache.EnsureDispatch("Apwn.Document") # type: ignore
-aspen.InitFromArchive2(sys.argv[1])
-aspen.Visible = False
-aspen.SuppressDialogs = True  # Suppress windows dialogs
-aspen.Engine.Run2()
-
+TEA_Plant_configuration = {
+    "plant_name" : "test_plant",
+    'country': 'Netherlands',
+    'region': None,
+    'interest_rate': 0.09,
+    'operator_hourly_rate': 38.11,
+    'project_lifetime': 20, # Taken from case study 1
+    'plant_utilization': 0.95,
+}
 
 
-#inout.write_JSON(data, "./data.json")
-#plant_configuration = inout.read_JSON("./data.json")
+#prices per unit for substances:
+pricesForOpex = {
+    'CH4' : 0.1,
+    'C' : 0.2,
+    'H2' : 0.3,
+    'WATER' : 0.4,
+    'O2' : 0.5,
+    'N2' : 0.6,
+    'CO2' : 0.7,
+    'NI' : 0.8,
+}
 
-# print(plant_configuration)
-# initialValues, bounds, isBlock, paramArray, blockNameArray, aspen
-result = aol.optimizeInputs([7],
-                            (5, 10),
-                            True,
-                            ["PRES"],
-                            ["COMP-1"],
-                            aspen)
+Aspen = aspen.init_aspen(abspath(sys.argv[1]))
+StreamsForOpex = aspen.GetStreams(Aspen)
+BlocksForOpex = aspen.read_data(Aspen)
+opex_d = inout.createOPEXdict(StreamsForOpex, BlocksForOpex, pricesForOpex)
+confg = inout.TEA_config(BlocksForOpex, opex_d)
 
-print(result)
+plant = Plant(confg)
+pprint(confg,indent=4)
+plant.calculate_levelized_cost(True)
