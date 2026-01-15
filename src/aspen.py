@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Any, TypeAlias
 from pprint import pprint
+from os.path import normpath
 import win32com.client as win32
 
 Aspen: TypeAlias = win32.CDispatch
@@ -91,6 +92,16 @@ def fetch_from_connection(port: str, path: str, output_name: str, unit: str) -> 
     return fetch
 
 
+def fetch_all_ports(block: Block, block_path: str):
+    return {
+        p.Name: [
+            normpath(rf"{block_path}\..\..\Streams\{stream}")
+            for stream, _ in get_all_children(p)
+        ]
+        for p, _ in get_all_children(block.FindNode(rf"Ports"))
+    }
+
+
 DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Mixer": [fetch_from_connection("P(OUT)", r"Output\VOLFLMX2", "flow", "l/sec")],
     "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
@@ -142,7 +153,9 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Dryer": [],  # TODO: Not in cstr-ch4.apw
     "Fluidbed": [],  # TODO: Not in cstr-ch4.apw
     "Cyclone": [
-        fetch_from_connection("G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate", "cum/sec"),
+        fetch_from_connection(
+            "G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate", "cum/sec"
+        ),
     ],
     "Cfuge": [],  # TODO: Not in cstr-ch4.apw
     "Filter": [],  # TODO: Not in cstr-ch4.apw
@@ -179,6 +192,7 @@ def read_data(aspen: Aspen, search=None):
                 curr_data["data"][res.name] = (res.data, res.unit)
 
             if len(fetchers) != 0:
+                curr_data["ports"] = fetch_all_ports(block, path)
                 data[path] = curr_data
         elif record_type == "Hierarchy":
             child_path = r"Data\Blocks"
@@ -194,7 +208,8 @@ def read_all_units(aspen: Aspen):
             "value": u.Value,
             "children": {c.Name: c.Value for c, _ in get_all_children(u)},
         }
-        for u, _ in get_all_children(aspen.Application.Tree.FindNode(r"\Unit Table"))}
+        for u, _ in get_all_children(aspen.Application.Tree.FindNode(r"\Unit Table"))
+    }
 
     return units
 
@@ -205,7 +220,8 @@ def read_all_data(aspen: Aspen):
     blocks = list(
         get_all_children(
             aspen.Application.Tree.FindNode(r"\Data\Blocks"), r"\Data\Blocks"
-        ))
+        )
+    )
 
     blocks.extend(
         get_all_children(
@@ -250,14 +266,13 @@ def read_all_data(aspen: Aspen):
 def MassSearch(MASSFLOW, vocal=True) -> dict:
     """
     this function returns a dictionary with all Massflows in the current directory in kg/h
-    
+
     :param MASSFLOW: an Aspen object
     :param vocal: BOOL print useless stuff
     :return: rerturns an dictionary with all massflows
     :rtype: dict
     """
-    data = {r"\CIPSD": {},
-            r"\MIXED": {}}
+    data = {r"\CIPSD": {}, r"\MIXED": {}}
 
     MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
     CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
@@ -289,13 +304,17 @@ def StreamSearch(stream, path, vocal=True):
             print(rf"   {path} is parentless")
         data[rf"{path}"] = {}
         data[rf"{path}"][r"SOURCE"] = {"cost/h": 0}
-        data[rf"{path}"][r"MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
+        data[rf"{path}"][r"MASSFLOW"] = MassSearch(
+            MASSFLOW=stream.FindNode(r"\Output\MASSFLOW")
+        )
 
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
-            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
+            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(
+                stream.FindNode(r"Output\STCOST").AttributeValue(0)
+            )
 
         if vocal:
-            print(f"    cost/h: {data[rf"{path}"][r"SOURCE"]["cost/h"]}")
+            print(f"    cost/h: {data[rf'{path}'][r'SOURCE']['cost/h']}")
 
     return data
 
@@ -304,7 +323,7 @@ def GetStreams(aspen: Aspen, vocal=True):
     """
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
-    
+
     :param aspen: the Asping object with which the file is treveresd
     :param vocal: True makes the function print more information
     """
@@ -322,7 +341,6 @@ def GetStreams(aspen: Aspen, vocal=True):
     )
 
     for block, path in blocks:
-
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
         if record_type == "Hierarchy":
@@ -333,7 +351,7 @@ def GetStreams(aspen: Aspen, vocal=True):
             streams.extend(get_all_children(s, rf"{path}\Data\Streams"))
     if vocal:
         print(f"streams found: {streams}")
-    for (stream, path) in streams:
+    for stream, path in streams:
         if vocal:
             print("\n-----", path, "----- type:", type(stream))
         data.update(StreamSearch(stream=stream, path=path, vocal=vocal))
@@ -343,11 +361,13 @@ def GetStreams(aspen: Aspen, vocal=True):
 
     return data
 
+
 if __name__ == "__main__":
     from os.path import abspath
     import sys
     from pprint import pprint
     from inout import main
+
     Aspen = init_aspen(abspath(sys.argv[1]))
     dict = GetStreams(Aspen)
     blockData = read_data(Aspen)
