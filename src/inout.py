@@ -7,6 +7,7 @@ p.s: json things are basically just wrappers right now.
 """
 import sys
 import json
+from typing import TypeAlias, Union
 import numpy as np
 from dataclasses import dataclass
 # someone better versed in python make this pretty
@@ -47,13 +48,9 @@ def read_JSON(path)->dict:
     # unformat data here (nothing currently)
 
     return data
+OpexDict:TypeAlias = dict[str,dict[Union[Literal["consumption"],Literal["price"]], float]]
 
-# ==== dictionaries ====
-
-# find process_type, category, etc. from type
-
-
-def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
+def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->OpexDict:
     opexDict = {}
 
     netPowerConsumption = 0 #in kW!
@@ -94,37 +91,6 @@ def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
     return opexDict
     
 
-### TESTING PURPOSES ###
-# from os.path import abspath
-# ASPEN = asp.init_aspen(abspath(sys.argv[1]))
-# testdict = {}
-# testdict = asp.GetStreams(ASPEN)
-# blockData = asp.read_data(ASPEN)
-# print(createOPEXdict(testdict, blockData))
-
-
-# ======== utils =========
-
-def add(d:dict, key:str, value)->None:
-    '''adds value to key in dictionary or creates it if it doesn't exist'''
-    if key in d:
-        d[key] += value
-    else:
-        d[key] = value
-
-
-
-# type EquipCategory = Literal[
-
-# ]
-
-# type EquiptType = Literal[
-
-# ]
-
-
-
-
 @dataclass
 class BlockEntry:
     type: str
@@ -133,9 +99,6 @@ class BlockEntry:
 
 
 EquipmentConfig: dict[str, BlockEntry] = {
-
-
-
     "Mixer":       BlockEntry("Static mixer", "Agitators & mixers", "flow"), 
 
     "Flash2":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"), 
@@ -165,16 +128,6 @@ EquipmentConfig: dict[str, BlockEntry] = {
     "Cfuge":       BlockEntry("Centrifuge, high-speed disk","Centrifuges",""),
     "Filter":      BlockEntry("Vacuum drum filter","Filters",""),
     "CfFilter":    BlockEntry("Plate & frame filter","Filters",""),
-
-    #TODO figure out how to parse columns
-    # "DSTWU": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "Distl": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "SCFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "RadFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "MultiFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "PetroFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-    # "RateFrac": BlockEntry("Fluids", "Furnace, cylindrical", "Boilers & Furnaces"), 
-
 }
 
 def CreateEquipment(name:str, year:int ,process_type:str, block):
@@ -184,11 +137,11 @@ def CreateEquipment(name:str, year:int ,process_type:str, block):
             name=name,
             param=block['data'][conf.paramater_name][0],
             process_type=process_type,
-            category=conf.category, # the type of block category
-            type=conf.type, # the specific type
-            material=block.get('material', "Carbon steel"), # material made out of
-            num_units=1, # i assume they're not grouped
-            target_year=year, # just doing what would be default
+            category=conf.category, 
+            type=conf.type,
+            material=block.get('material', "Carbon steel"),
+            num_units=1,
+            target_year=year, 
         )
         print(f"Added block of type {block['record_type']}")
         return new_equip
@@ -199,7 +152,7 @@ def CreateEquipment(name:str, year:int ,process_type:str, block):
 
 # =====================
 
-def TEA_config(data:dict, variable_opex_inputs:dict,
+def TEA_config(data:dict, variable_opex_inputs:OpexDict,
                process_type="Fluids",
                daily_prod=100,  # TODO: find a better value for this
                country="Netherlands",
@@ -211,9 +164,6 @@ def TEA_config(data:dict, variable_opex_inputs:dict,
     Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
     see TEA documentation for additional configuration options.
     '''
-
-    # we need to overwrite the process_type, equipment, inputs,
-    # and i guess plant_utilization?
     configuration = dict()
 
     equip = []
@@ -226,46 +176,16 @@ def TEA_config(data:dict, variable_opex_inputs:dict,
             continue
 
     configuration['equipment'] = equip
-    configuration['process_type'] = process_type # change based on blocks?
-    configuration['daily_prod'] = daily_prod # TEMPORARY
-    configuration['country'] = country # User input
+    configuration['process_type'] = process_type 
+    configuration['daily_prod'] = daily_prod 
+    configuration['country'] = country 
 
 
-    # This is going to need be made from the streams / blocks
-    configuration["variable_opex_inputs"] = variable_opex_inputs #variable opexDict
-    configuration['operator_hourly_rate'] = operator_hourly_rate # User input
-    configuration['interest_rate'] = interest_rate # User input
+    configuration["variable_opex_inputs"] = variable_opex_inputs 
+    configuration['operator_hourly_rate'] = operator_hourly_rate 
+    configuration['interest_rate'] = interest_rate 
 
     configuration["project_lifetime"] = project_lifetime
 
     return configuration
-
-
-def main():
-    data = {"dummy_block":{
-            'parameter' : 78, # in this case volume (check when making data)
-            'type' : 'Compr',
-            'material' : 'Aluminum',
-            'input_name': "electricity",
-            'input_amount' : 6,
-    }}
-    configuration = {
-        "plant_name" : "test_plant",
-        'country': 'Netherlands',
-        'region': None,
-        'interest_rate': 0.09,
-        'operator_hourly_rate': 38.11,
-        'project_lifetime': 20, # Taken from case study 1
-        'plant_utilization': 0.95,
-    }
-
-    pl_conf = TEA_config(data)
-    pl_conf["plant_name"] = "test_plant"
-    print(pl_conf)
-    pl = Plant(pl_conf)
-    pl.calculate_levelized_cost(True)
-
-
-if __name__ == "__main__":
-   main()
 
