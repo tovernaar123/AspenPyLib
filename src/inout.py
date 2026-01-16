@@ -7,7 +7,9 @@ p.s: json things are basically just wrappers right now.
 """
 import sys
 import json
+from typing import TypeAlias, Union, Literal
 import numpy as np
+from dataclasses import dataclass
 # someone better versed in python make this pretty
 from openpytea.plant import Plant
 from openpytea.equipment import *
@@ -19,55 +21,6 @@ TODO:
 
 
 """
-
-# @dataclass
-# class SearchBlock:
-#     data: list[tuple[str, str]]
-#     children: list[str]
-#
-# search = {
-#     "Hierarchy": SearchBlock([], ["Blocks"]),
-#     "Compr": SearchBlock([("WNET", "Net Power")], []),
-#     "MCompr": SearchBlock([("WNET", "Net Power")], []),
-#     "Turb": SearchBlock([("WNET", "Net Power")], []),
-#     "Cyclone": SearchBlock([], []),
-#     "Sep": SearchBlock([], []),
-#     "HeatX": SearchBlock([], []),
-#     "Dupl": SearchBlock([], []),
-#     "Flash2": SearchBlock([], []),
-#     "Heater": SearchBlock([], []),
-#     "Mixer": SearchBlock([], []),
-#     "Sep2": SearchBlock([], []),
-#     "RPlug": SearchBlock([], []),
-#     "Valve": SearchBlock([], []),
-#     "RStoic": SearchBlock([], []),
-# }
-#
-# RECORD_TYPE = 6
-# def readAspen(aspen, search=search):
-#     data = {}
-#     blocks = list(get_all_children(aspen.Application.Tree.FindNode(r"\Data\Blocks")))
-#     # Loop through all blocks
-#     for block in blocks:
-#         recordType = block.AttributeValue(RECORD_TYPE)
-#         if block.Name[:4] == "TURB":
-#             recordType = "Turb"
-#         # print(block.Name, block.Value, block.ValueType, recordType)
-#         curr_data = {}
-#         if s := search.get(recordType):
-#             for path, name in s.data:
-#                 b = block.FindNode(rf"Output\{path}")
-#                 curr_data["parameter"] = np.abs(b.Value)
-#                 curr_data["name"] = name
-#                 curr_data["type"] = recordType
-#                 curr_data["unit"] = b.UnitString
-#                 data[block.Name] = curr_data
-#             for path in s.children:
-#                 b = block.FindNode(rf"Data\{path}")
-#                 blocks.extend(get_all_children(b))
-#     return data
-# ======== IO ================
-
 def get_all_children(node):
     return (node.Elements.Item(i) for i in range(node.Elements.Count))
 
@@ -95,60 +48,9 @@ def read_JSON(path)->dict:
     # unformat data here (nothing currently)
 
     return data
+OpexDict:TypeAlias = dict[str,dict[Union[Literal["consumption"],Literal["price"]], float]]
 
-# ==== dictionaries ====
-
-# find process_type, category, etc. from type
-process_type_d = {
-    "Compr" : "Fluids",
-    "MCompr" : "Fluids",            # I copy-pasted the Compr attributes somebody please check this
-    "Turb" : "Fluids"               # I totally made up this type, there has to be a better way
-}
-category_d = {
-    "Compr" : 'Pumps',          # Lets all pretend compressors are actually pumps
-    "MCompr" : 'Pumps',
-    "Turb" : 'Turbines'
-
-}
-TEA_type_d = {
-    'Compr' : 'Centrifugal pump',
-    'MCompr' : 'Centrifugal pump',
-    'Turb' : 'Steam turbine'
-}
-"""
-opex_d = {
-        # For the variable opex inputs, the consumption is always based on daily consumption
-
-        #Wnet + the other power names
-        "electricity": {
-            "consumption": (1000 + 1000) * 24,
-            #wondering of aspen knows these?
-            "price": 0.10, 
-            "price_std": 0.05 / 2,
-            "price_max": 3,
-            "price_min": 0.01,
-        },
-
-        #Should be taken from the streams
-        "refrigerant": {  # 1.5 kg/h taken from Figure 1
-            "consumption": 1.5 * 24,
-            "price": 5,
-            "price_std": 3 / 2,
-            "price_max": 10,
-            "price_min": 1,
-        },
-
-        "cooling_water": {  # 11.03 kg/h taken from Figure 1
-            "consumption": 39_690 * 24,
-            "price": 2.4592e-4,
-            "price_std": 1e-4,
-            "price_max": 4e-4,
-            "price_min": 1e-5,
-        },
-}
-"""
-
-def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
+def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->OpexDict:
     opexDict = {}
 
     netPowerConsumption = 0 #in kW!
@@ -188,111 +90,114 @@ def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->dict:
         
     return opexDict
     
-"""
-### TESTING PURPOSES ###
-from os.path import abspath
-ASPEN = asp.init_aspen(abspath(sys.argv[1]))
-testdict = {}
-testdict = asp.GetStreams(ASPEN)
-blockData = asp.read_data(ASPEN)
-print(createOPEXdict(testdict, blockData))
-"""
 
-# ======== utils =========
+@dataclass
+class BlockEntry:
+    type: str
+    category: str
+    paramater_name:str
 
-def add(d:dict, key:str, value)->None:
-    '''adds value to key in dictionary or creates it if it doesn't exist'''
-    if key in d:
-        d[key] += value
-    else:
-        d[key] = value
+
+EquipmentConfig: dict[str, BlockEntry] = {
+    "Mixer":       BlockEntry("Static mixer", "Agitators, blenders, & mixers", "flow"),
+
+    # TODO: Should be shell mass instead of Outlet Pressure
+    "Flash2":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"),
+    "Flash3":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"),
+
+    "Decanter":    BlockEntry("Horizontal CS", "Pressure vessels", "flow"), 
+    "Sep":         BlockEntry("Vertical CS", "Pressure vessels", "flow"), 
+    "Sep2":        BlockEntry("Vertical CS", "Pressure vessels", "flow"),
+
+    # TODO: need to handle negative duty somehow
+    "Heater":      BlockEntry("Furnace, cylindrical", "Boilers, heaters, & furnaces", "Heating Duty"),
+
+    "HeatX":       BlockEntry("U-tube shell & tube", "Heat exchangers", "Heat Transfer Area"), 
+    "MHeatX":      BlockEntry("U-tube shell & tube", "Heat exchangers", "Heat Transfer Area"),
+
+    "RYield":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+    "REquil":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+    "RGibbs":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+    "RCSTR":       BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+    # TODO: Add RStoic
+    "RYield":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+
+
+    "Pump":        BlockEntry("Single-stage centrifugal","Pumps","Volumetric Flow"),
+
+    # TODO: Handle negative power
+    "Compr":       BlockEntry("Compressor, centrifugal","Compressors, fans, & blowers","Net Power"),
+    "MCompr":       BlockEntry("Compressor, centrifugal","Compressors, fans, & blowers","Net Power"),
+
+    "Crytallizer": BlockEntry("Scraped surface crystallizer","Crystallizers",""),
+    "Crusher":     BlockEntry("Pulverizer","Crushers",""),
+    "Dryer":       BlockEntry("Direct contact rotary dryer","Dryers",""),
+    "Fluidbed":    BlockEntry("Indirect fluidized-bed","Reactors",""),
+    "Cyclone":     BlockEntry("Gas multi-cyclone","Dust collectors","Outlet Volumetric Gas Rate"),
+    "Cfuge":       BlockEntry("Centrifuge, high-speed disk","Centrifuges",""),
+    "Filter":      BlockEntry("Vacuum drum filter","Filters",""),
+    "CfFilter":    BlockEntry("Plate & frame filter","Filters",""),
+}
+
+def CreateEquipment(name:str, year:int ,process_type:str, block):
+    try:
+        conf = EquipmentConfig[block['record_type']]
+        new_equip = Equipment(
+            name=name,
+            param=block['data'][conf.paramater_name][0],
+            process_type=process_type,
+            category=conf.category, 
+            type=conf.type,
+            material=block.get('material', "Carbon steel"),
+            num_units=1,
+            target_year=year, 
+        )
+        print(f"Added block of type {block['record_type']}")
+        return new_equip
+    except Exception as err:
+        print(f"Could not Automatically add block of type {block['record_type']} Because: {err}, Please add manually if needed.")
+        return False
+
 
 # =====================
 
-def TEA_plant(data:dict, configuration:dict, opexDict:dict):
+def TEA_config(data:dict, variable_opex_inputs:OpexDict,
+               process_type="Fluids",
+               daily_prod=100,  # TODO: find a better value for this
+               country="Netherlands",
+               operator_hourly_rate=38.11,
+               interest_rate=0.09,
+               project_lifetime="100",
+               target_year=2023):
     '''
     Uses the data from aspen (and some additional parameters) to create a TEA plant configuration.
     see TEA documentation for additional configuration options.
     '''
-
-    # we need to overwrite the process_type, equipment, inputs,
-    # and i guess plant_utilization?
     configuration = dict()
 
     equip = []
-    opex_inputs = {} # because this isn't stored in the equipment in TEA
-    production = {}
     for block_name in data:
         block = data[block_name]
-
-        new_equip = Equipment(
-            name=block_name,
-            param=block["parameter"],
-            process_type=process_type_d[block['type']],
-            category= category_d[block['type']], # the type of block category
-            type=TEA_type_d[block['type']], # the specific type
-            material=block.get('material', "Carbon steel"), # material made out of
-            num_units=1, # i assume they're not grouped
-            purchased_cost=None, # does Aspen know maybe?
-            cost_func= None, # presume aspen doesn't know
-            target_year= 2023, # just doing what would be default
-        )
-        equip.append(new_equip)
-        # do something about inputs:
-        #add(opex_inputs, block['input_name'], opex_inputs) # something like this?
-        add(production, 'count', 1) # might be more complicated than this
+        new_equip = CreateEquipment(block_name,target_year,process_type, block)
+        if new_equip:
+            equip.append(new_equip)
+        else:
+            continue
 
     configuration['equipment'] = equip
-
-    #kinda confused what this was supposed to do
-    # make opex inputs "verbose"
-    # opex_inputs_verbose = {}
-    # for in_name in opex_inputs:
-    #     in_val = opex_inputs[in_name]
-    #     dict_val = opex_d[in_name]
-    #     opex_inputs_verbose[in_name] = dict_val
-
-    # configuration['variable_opex_inputs'] = opex_inputs_verbose
-    configuration['process_type'] = process_type # change based on blocks?
-    configuration['daily_prod'] = daily_prod # TEMPORARY
-    configuration['country'] = country # User input
+    configuration['process_type'] = process_type 
+    configuration['daily_prod'] = daily_prod 
+    configuration['country'] = country 
 
 
-    # This is going to need be made from the streams / blocks
-    configuration["variable_opex_inputs"] = opexDict #variable opexDict
-    configuration['operator_hourly_rate'] = 38.11 # User input
-    configuration['interest_rate'] = 0.09 # User input
+    configuration["variable_opex_inputs"] = variable_opex_inputs 
+    configuration['operator_hourly_rate'] = operator_hourly_rate 
+    configuration['interest_rate'] = interest_rate
+
+    # TODO: add the correct plant products
+    configuration['plant_products'] = { "not_real": { "price": 1.0, "production": 1.0 }  }
 
     configuration["project_lifetime"] = project_lifetime
 
     return configuration
-
-
-def main():
-    data = {"dummy_block":{
-            'parameter' : 78, # in this case volume (check when making data)
-            'type' : 'Compr',
-            'material' : 'Aluminum',
-            'input_name': "electricity",
-            'input_amount' : 6,
-    }}
-    configuration = {
-        "plant_name" : "test_plant",
-        'country': 'Netherlands',
-        'region': None,
-        'interest_rate': 0.09,
-        'operator_hourly_rate': 38.11,
-        'project_lifetime': 20, # Taken from case study 1
-        'plant_utilization': 0.95,
-    }
-
-    pl_conf = TEA_config(data)
-    pl_conf["plant_name"] = "test_plant"
-    print(pl_conf)
-    pl = Plant(pl_conf)
-    pl.calculate_levelized_cost(True)
-
-
-if __name__ == "__main__":
-    main()
 

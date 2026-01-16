@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, Any, TypeAlias
-
+from pprint import pprint
 import win32com.client as win32
 
 Aspen: TypeAlias = win32.CDispatch
@@ -95,7 +95,10 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
         fetch_from_data(r"Output\HX_AREAP", "Heat Transfer Area", "sqm"),
         fetch_from_data(r"Output\HX_DUTY", "Duty", "MW"),
     ],
-    # "MHeatX": SearchBlock([]),
+    "MHeatX": [
+        fetch_from_data(r"Output\HX_AREAP", "Heat Transfer Area", "sqm"),
+        fetch_from_data(r"Output\HX_DUTY", "Duty", "MW"),
+    ],
     # All types of Columns
     "DSTWU": [],
     "Distl": [],
@@ -105,11 +108,16 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "PetroFrac": [],
     "RateFrac": [],
     # All types of Reactor
-    "RYield": [],
-    "REquil": [],
-    "RGibbs": [],
+    "RYield": [
+        fetch_from_data(r"Output\TOT_VOL", "Volume", "cum"),
+    ],
+    "REquil": [
+        fetch_from_data(r"Output\TOT_VOL", "Volume", "cum"),
+    ],
+    "RGibbs": [
+        fetch_from_data(r"Output\TOT_VOL", "Volume", "cum"),
+    ],
     "RCSTR": [
-        fetch_from_data(r"Output\B_PRES", "Pressure", "bar"),
         fetch_from_data(r"Output\TOT_VOL", "Volume", "cum"),
     ],
     "RPlug": [],
@@ -149,7 +157,6 @@ def read_data(aspen: Aspen, search=None):
     for block, path in blocks:
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
-        print(block.Name, record_type, path)
 
         curr_data = {
             "path": path,
@@ -231,7 +238,7 @@ def read_all_data(aspen: Aspen):
 
     return data
 
-def MassSearch(MASSFLOW,vocal = True)->dict:
+def MassSearch(MASSFLOW,vocal = False)->dict:
     """
     this function returns a dictionary with all Massflows in the current directory in kg/h
     
@@ -264,7 +271,7 @@ def MassSearch(MASSFLOW,vocal = True)->dict:
 
 
 
-def StreamSearch(stream,path,vocal = True):
+def StreamSearch(stream,path,vocal = False):
     data = {}
 
     
@@ -290,7 +297,7 @@ def StreamSearch(stream,path,vocal = True):
     return data
             
     
-def GetStreams(aspen: Aspen,vocal = True):
+def GetStreams(aspen: Aspen,vocal = False):
     """
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
@@ -336,17 +343,3 @@ def GetStreams(aspen: Aspen,vocal = True):
         pprint(data)
         
     return data
-
-#UNCOMMENT THIS IF YOU WANT TO USE inout.py!
-
-if __name__ == "__main__":
-    from os.path import abspath
-    import sys
-    from pprint import pprint
-    from inout import main
-    Aspen = init_aspen(abspath(sys.argv[1]))
-    dict = GetStreams(Aspen)
-    blockData = read_data(Aspen)
-    inout.main()
-    #print(Aspen)
-    #pprint(GetStreams(aspen=Aspen,vocal=True))

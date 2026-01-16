@@ -1,28 +1,11 @@
 import aspen
+from openpytea.plant import Plant
 import inout
 from os.path import abspath
 import sys
 from pprint import pprint
-
-TEA_Plant_configuration = {
-    "plant_name" : "test_plant",
-    'country': 'Netherlands',
-    'region': None,
-    'interest_rate': 0.09,
-    'operator_hourly_rate': 38.11,
-    'project_lifetime': 20, # Taken from case study 1
-    'plant_utilization': 0.95,
-}
-
-DummyData = {"dummy_block":{
-        'parameter' : 78, # in this case volume (check when making data)
-        'type' : 'Compr',
-        'material' : 'Aluminum',
-        'input_name': "electricity",
-        'input_amount' : 6,
-}}
-
-#prices per unit for substances:
+#The price information for the different compounds in the aspen simulation file,
+#If the price here is not given the price of aspen will be used.
 pricesForOpex = {
     'CH4' : 0.1,
     'C' : 0.2,
@@ -34,10 +17,23 @@ pricesForOpex = {
     'NI' : 0.8,
 }
 
+#Startup aspen by opening the simulation file
 Aspen = aspen.init_aspen(abspath(sys.argv[1]))
+
+#Read-out the required blocks and there data from aspen. 
+Blocks = aspen.read_data(Aspen)
+
+#Get all the  streams from aspen.
 StreamsForOpex = aspen.GetStreams(Aspen)
-BlocksForOpex = aspen.read_data(Aspen)
-pprint(BlocksForOpex)
-opex_d = inout.createOPEXdict(StreamsForOpex, BlocksForOpex, pricesForOpex)
-#pl = inout.TEA_plant(DummyData, TEA_Plant_configuration, opex_d)
-#pl.calculate_levelized_cost(True)
+
+#Figure out what streams are input (feed) streams, and how much that feed costs.
+opex_d = inout.createOPEXdict(StreamsForOpex, Blocks, pricesForOpex)
+
+#Finally create the config needed for the TEA pacakge
+confg = inout.TEA_config(Blocks, opex_d)
+#Modify the config if needed.
+#create the plant.
+plant = Plant(confg)
+pprint(confg,indent=4)
+#Now use the function from TEA to get the cost.
+plant.calculate_levelized_cost(True)
