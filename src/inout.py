@@ -7,7 +7,7 @@ p.s: json things are basically just wrappers right now.
 """
 import sys
 import json
-from typing import TypeAlias, Union
+from typing import TypeAlias, Union, Literal
 import numpy as np
 from dataclasses import dataclass
 # someone better versed in python make this pretty
@@ -99,32 +99,41 @@ class BlockEntry:
 
 
 EquipmentConfig: dict[str, BlockEntry] = {
-    "Mixer":       BlockEntry("Static mixer", "Agitators & mixers", "flow"), 
+    "Mixer":       BlockEntry("Static mixer", "Agitators, blenders, & mixers", "flow"),
 
-    "Flash2":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"), 
-    "Flash3":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"), 
+    # TODO: Should be shell mass instead of Outlet Pressure
+    "Flash2":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"),
+    "Flash3":      BlockEntry("Vertical CS", "Pressure vessels", "Outlet Pressure"),
+
     "Decanter":    BlockEntry("Horizontal CS", "Pressure vessels", "flow"), 
     "Sep":         BlockEntry("Vertical CS", "Pressure vessels", "flow"), 
     "Sep2":        BlockEntry("Vertical CS", "Pressure vessels", "flow"),
 
-    "Heater":      BlockEntry("Furnace, cylindrical", "Boilers & Furnaces", "Heating Duty"),
+    # TODO: need to handle negative duty somehow
+    "Heater":      BlockEntry("Furnace, cylindrical", "Boilers, heaters, & furnaces", "Heating Duty"),
+
     "HeatX":       BlockEntry("U-tube shell & tube", "Heat exchangers", "Heat Transfer Area"), 
     "MHeatX":      BlockEntry("U-tube shell & tube", "Heat exchangers", "Heat Transfer Area"),
+
     "RYield":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
-    "REquil":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),   
+    "REquil":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
     "RGibbs":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
     "RCSTR":       BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
+    # TODO: Add RStoic
     "RYield":      BlockEntry("Jacketed agitated",  "Reactors", "Volume"),
 
 
-    "Pump":        BlockEntry("Single-stage centrifugal pump","Pumps","Volumetric Flow"),
-    "Compr":       BlockEntry("Compressor, centrifugal","Compressors & Blowers","Net Power"),
-    "MCompr":       BlockEntry("Compressor, centrifugal","Compressors & Blowers","Net Power"),
+    "Pump":        BlockEntry("Single-stage centrifugal","Pumps","Volumetric Flow"),
+
+    # TODO: Handle negative power
+    "Compr":       BlockEntry("Compressor, centrifugal","Compressors, fans, & blowers","Net Power"),
+    "MCompr":       BlockEntry("Compressor, centrifugal","Compressors, fans, & blowers","Net Power"),
+
     "Crytallizer": BlockEntry("Scraped surface crystallizer","Crystallizers",""),
     "Crusher":     BlockEntry("Pulverizer","Crushers",""),
     "Dryer":       BlockEntry("Direct contact rotary dryer","Dryers",""),
     "Fluidbed":    BlockEntry("Indirect fluidized-bed","Reactors",""),
-    "Cyclone":     BlockEntry("Gas multi-cyclone","Cyclones","Outlet Volumetric Gas Rate"),
+    "Cyclone":     BlockEntry("Gas multi-cyclone","Dust collectors","Outlet Volumetric Gas Rate"),
     "Cfuge":       BlockEntry("Centrifuge, high-speed disk","Centrifuges",""),
     "Filter":      BlockEntry("Vacuum drum filter","Filters",""),
     "CfFilter":    BlockEntry("Plate & frame filter","Filters",""),
@@ -183,7 +192,10 @@ def TEA_config(data:dict, variable_opex_inputs:OpexDict,
 
     configuration["variable_opex_inputs"] = variable_opex_inputs 
     configuration['operator_hourly_rate'] = operator_hourly_rate 
-    configuration['interest_rate'] = interest_rate 
+    configuration['interest_rate'] = interest_rate
+
+    # TODO: add the correct plant products
+    configuration['plant_products'] = { "not_real": { "price": 1.0, "production": 1.0 }  }
 
     configuration["project_lifetime"] = project_lifetime
 

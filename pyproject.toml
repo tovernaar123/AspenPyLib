@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.3.4",
-    "openpytea",
+    "openpytea==1.2.0",
     "pywin32>=311",
     "scipy>=1.16.3",
 ]
@@ -15,6 +15,3 @@ dependencies = [
 dev = [
     "scipy-stubs>=1.16.3.0",
 ]
-
-[tool.uv.sources]
-openpytea = { git = "https://github.com/pbtamarona/OpenPyTEA.git" }
