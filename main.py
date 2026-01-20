@@ -9,9 +9,12 @@ if len(sys.argv) < 2:
 
 # Connect to Aspen Plus
 aspen = a.init_aspen(abspath(sys.argv[1]))
+aspen.Visible = True
 
 data = a.read_data(aspen)
+streams = a.GetStreams(aspen, vocal=False)
 
-import pprint
+from pprint import pprint
 
-pprint.pprint(data)
+# pprint.pprint(data)
+pprint(streams)
