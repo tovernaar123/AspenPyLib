@@ -9,7 +9,7 @@ import inout
 
 def CreatePlant(aspen) -> Plant:
     plant_configuration = inout.readAspen(aspen)
-    Plant_object = inout.TEA_plant(plant_configuration, plant_configuration)
+    Plant_object = inout.TEA_config(plant_configuration, plant_configuration)
     return Plant_object
 
 def getTEAResult(aspen) -> float:

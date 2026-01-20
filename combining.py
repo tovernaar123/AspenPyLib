@@ -22,7 +22,7 @@ plant_configuration = read_data(aspen)
 #plant_configuration = inout.read_JSON("./data.json")
 
 print(plant_configuration)
-Plant_object = inout.TEA_plant(plant_configuration)
+Plant_object = inout.TEA_config(plant_configuration)
 
 IDV_list = plant_configuration.keys()
 

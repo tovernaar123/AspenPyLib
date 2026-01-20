@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Any, TypeAlias
 from pprint import pprint
+from os.path import normpath
 import win32com.client as win32
 
 Aspen: TypeAlias = win32.CDispatch
@@ -32,6 +33,7 @@ class Res:
     data: float
     unit: str
 
+
 HAP_RECORDTYPE = 6
 # Port in or out
 HAP_INOUT = 14
@@ -43,6 +45,7 @@ HAP_VALUE = 0
 Block: TypeAlias = Any
 
 Fetcher = Callable[[Block, str], Res]
+
 
 def get_value_with_unit(block: Block, unit: str):
     unit_row = block.AttributeValue(HAP_UNITROW)
@@ -70,16 +73,33 @@ def fetch_from_data(path: str, output_name: str, unit: str) -> Fetcher:
 
 
 def fetch_from_connection(port: str, path: str, output_name: str, unit: str) -> Fetcher:
+    def get_path_value(root: Block, block_path: Block, port: str):
+        # need to read the stream relative to the block_path since we need to use the one from the closest hierarchy
+        b = root.FindNode(rf"{block_path}\..\..\Streams\{port}\{path}")
+        return get_value_with_unit(b, unit)
+
     def fetch(block: Block, block_path: str):
         p, *other = [b for b, _ in get_all_children(block.FindNode(rf"Ports\{port}"))]
-        assert len(other) == 0, f"Multiple blocks connected to {port}. Expected 1 but got {1 + len(other)}"
+        # assert len(other) == 0, f"Multiple blocks connected to {port}. Expected 1 but got {1 + len(other)}"
 
-        # need to read the stream relative to the block_path since we need to use the one from the closest hierarchy
-        b = block.Application.Tree.FindNode(rf"{block_path}\..\..\Streams\{p.Value}\{path}")
+        val = get_path_value(block.Application.Tree, block_path, p.Value)
 
-        return Res(output_name, get_value_with_unit(b, unit), unit)
+        assert all(map(lambda that: get_path_value(block.Application.Tree, block_path, that.Value) == val, other)), \
+            "All of the ports didn't have the same value"
+
+        return Res(output_name, val, unit)
 
     return fetch
+
+
+def fetch_all_ports(block: Block, block_path: str):
+    return {
+        p.Name: [
+            normpath(rf"{block_path}\..\..\Streams\{stream}")
+            for stream, _ in get_all_children(p)
+        ]
+        for p, _ in get_all_children(block.FindNode(rf"Ports"))
+    }
 
 
 DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
@@ -87,8 +107,8 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Flash3": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Decanter": [],  # TODO: Not in cstr-ch4.apw
-    "Sep": [],  # TODO: figure out how to get pressure
-    "Sep2": [],  # TODO: figure out how to get pressure
+    "Sep": [fetch_from_connection("P(OUT)", r"Output\RES_PRES", "Pressure", "bar")],
+    "Sep2": [fetch_from_connection("O(OUT)", r"Output\RES_PRES", "Pressure", "bar")],
     # for the heater, not sure if the heating duty is `QNET` or `QCALC`
     "Heater": [fetch_from_data(r"Output\QCALC", "Heating Duty", "MW")],
     "HeatX": [
@@ -133,7 +153,9 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Dryer": [],  # TODO: Not in cstr-ch4.apw
     "Fluidbed": [],  # TODO: Not in cstr-ch4.apw
     "Cyclone": [
-        fetch_from_connection("G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate", "cum/sec"),
+        fetch_from_connection(
+            "G(OUT)", r"Output\VOLFLMX2", "Outlet Volumetric Gas Rate", "cum/sec"
+        ),
     ],
     "Cfuge": [],  # TODO: Not in cstr-ch4.apw
     "Filter": [],  # TODO: Not in cstr-ch4.apw
@@ -170,6 +192,7 @@ def read_data(aspen: Aspen, search=None):
                 curr_data["data"][res.name] = (res.data, res.unit)
 
             if len(fetchers) != 0:
+                curr_data["ports"] = fetch_all_ports(block, path)
                 data[path] = curr_data
         elif record_type == "Hierarchy":
             child_path = r"Data\Blocks"
@@ -185,7 +208,8 @@ def read_all_units(aspen: Aspen):
             "value": u.Value,
             "children": {c.Name: c.Value for c, _ in get_all_children(u)},
         }
-        for u, _ in get_all_children(aspen.Application.Tree.FindNode(r"\Unit Table"))}
+        for u, _ in get_all_children(aspen.Application.Tree.FindNode(r"\Unit Table"))
+    }
 
     return units
 
@@ -196,7 +220,8 @@ def read_all_data(aspen: Aspen):
     blocks = list(
         get_all_children(
             aspen.Application.Tree.FindNode(r"\Data\Blocks"), r"\Data\Blocks"
-        ))
+        )
+    )
 
     blocks.extend(
         get_all_children(
@@ -238,74 +263,70 @@ def read_all_data(aspen: Aspen):
 
     return data
 
-def MassSearch(MASSFLOW,vocal = False)->dict:
+def MassSearch(MASSFLOW, vocal=True) -> dict:
     """
     this function returns a dictionary with all Massflows in the current directory in kg/h
-    
+
     :param MASSFLOW: an Aspen object
     :param vocal: BOOL print useless stuff
     :return: rerturns an dictionary with all massflows
     :rtype: dict
     """
-    data = {r"\CIPSD":{},
-            r"\MIXED":{}}
-    
+    data = {r"\CIPSD": {}, r"\MIXED": {}}
 
     MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
     CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
-    for mass,path in CIPSD:
+    for mass, path in CIPSD:
         if mass.Value != None:
             data[r"\CIPSD"][rf"{path[1:]}"] = mass.Value
         else:
             data[r"\CIPSD"][rf"{path[1:]}"] = 0
-    
-    
-    for mass,path in MIXED:
+
+    for mass, path in MIXED:
         if mass.Value != None:
             data[r"\MIXED"][rf"{path[1:]}"] = mass.Value
         else:
             data[r"\MIXED"][rf"{path[1:]}"] = 0
-            
-            
+
     return data
 
 
-
-def StreamSearch(stream,path,vocal = False):
+def StreamSearch(stream, path, vocal=True):
     data = {}
 
-    
     port = stream.FindNode(rf"Ports\SOURCE")
     # print(port)
     if vocal:
         print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
-    
+
     if port.AttributeValue(HAP_HASCHILDREN) == False:
         if vocal:
             print(rf"   {path} is parentless")
         data[rf"{path}"] = {}
-        data[rf"{path}"][r"SOURCE"] = {"cost/h":0}
-        data[rf"{path}"][r"MASSFLOW"] = MassSearch(MASSFLOW=stream.FindNode(r"\Output\MASSFLOW"))
-        
+        data[rf"{path}"][r"SOURCE"] = {"cost/h": 0}
+        data[rf"{path}"][r"MASSFLOW"] = MassSearch(
+            MASSFLOW=stream.FindNode(r"\Output\MASSFLOW")
+        )
+
         if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
-            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(stream.FindNode(r"Output\STCOST").AttributeValue(0))
-            
+            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(
+                stream.FindNode(r"Output\STCOST").AttributeValue(0)
+            )
 
         if vocal:
-            print(f"    cost/h: {data[rf"{path}"][r"SOURCE"]["cost/h"]}")
-                
+            print(f"    cost/h: {data[rf'{path}'][r'SOURCE']['cost/h']}")
+
     return data
-            
-    
-def GetStreams(aspen: Aspen,vocal = False):
+
+
+def GetStreams(aspen: Aspen, vocal=True):
     """
     This functions creates an dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
-    
+
     :param aspen: the Asping object with which the file is treveresd
     :param vocal: True makes the function print more information
     """
-
 
     data = {}
     streams = list(
@@ -320,8 +341,6 @@ def GetStreams(aspen: Aspen,vocal = False):
     )
 
     for block, path in blocks:
-
-        
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
         if record_type == "Hierarchy":
@@ -329,17 +348,29 @@ def GetStreams(aspen: Aspen,vocal = False):
             b = block.FindNode(child_path)
             s = block.FindNode(r"Data\Streams")
             blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
-            streams.extend(get_all_children(s,rf"{path}\Data\Streams"))
+            streams.extend(get_all_children(s, rf"{path}\Data\Streams"))
     if vocal:
         print(f"streams found: {streams}")
-    for (stream, path) in streams:
+    for stream, path in streams:
         if vocal:
+            print("\n-----", path, "----- type:", type(stream))
+        data.update(StreamSearch(stream=stream, path=path, vocal=vocal))
 
-            print("\n-----",path,"----- type:",type(stream))
-        data.update(StreamSearch(stream=stream,path=path,vocal = vocal))
-
-    
     if vocal:
         pprint(data)
-        
+
     return data
+
+
+if __name__ == "__main__":
+    from os.path import abspath
+    import sys
+    from pprint import pprint
+    from inout import main
+
+    Aspen = init_aspen(abspath(sys.argv[1]))
+    dict = GetStreams(Aspen)
+    blockData = read_data(Aspen)
+    main()
+    # print(Aspen)
+    # pprint(GetStreams(aspen=Aspen,vocal=True))
