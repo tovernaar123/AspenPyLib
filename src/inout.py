@@ -97,7 +97,7 @@ PlantProducts: TypeAlias = dict[str,dict[Union[Literal["production"],Literal["pr
 def get_plant_products(stream_data:dict, prices:dict) -> PlantProducts:
     plant_products = {}
 
-    for stream in (s for s in stream_data.values() if not s["has_source"]):
+    for stream in (s for s in stream_data.values() if not s["has_dest"]):
         stream_name = stream["path"]
         cost = stream["cost/h"] or 0
         if cost != 0:
@@ -200,7 +200,7 @@ def TEA_config(data:dict,
                variable_opex_inputs:VariableOpexInputs,
                plant_products: PlantProducts,
                process_type="Fluids",
-               daily_prod=100,  # TODO: find a better value for this
+               daily_prod=100, # TODO: find a better value for this
                country="Netherlands",
                operator_hourly_rate=38.11,
                interest_rate=0.09,

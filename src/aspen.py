@@ -107,8 +107,7 @@ DEFAULT_SEARCH: dict[str, list[Fetcher]] = {
     "Flash2": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Flash3": [fetch_from_data(r"Output\B_PRES", "Outlet Pressure", "bar")],
     "Decanter": [],  # TODO: Not in cstr-ch4.apw
-    "Sep": [fetch_from_connection("P(OUT)", r"Output\RES_PRES", "Pressure", "bar"),
-            fetch_from_connection("P(OUT)", r"Output\RES_PRES", "Pressure", "bar")],
+    "Sep": [fetch_from_connection("P(OUT)", r"Output\RES_PRES", "Pressure", "bar")],
     "Sep2": [fetch_from_connection("O(OUT)", r"Output\RES_PRES", "Pressure", "bar")],
     # for the heater, not sure if the heating duty is `QNET` or `QCALC`
     "Heater": [fetch_from_data(r"Output\QCALC", "Heating Duty", "MW")],
