@@ -24,16 +24,19 @@ Aspen = aspen.init_aspen(abspath(sys.argv[1]))
 Blocks = aspen.read_data(Aspen)
 
 #Get all the  streams from aspen.
-StreamsForOpex = aspen.GetStreams(Aspen)
+Streams = aspen.GetStreams(Aspen, vocal=False)
+
+pprint(Streams)
 
 #Figure out what streams are input (feed) streams, and how much that feed costs.
-opex_d = inout.createOPEXdict(StreamsForOpex, Blocks, pricesForOpex)
+variable_opex_inputs = inout.get_variable_opex_inputs(Streams, Blocks, pricesForOpex, electricity_price=7.5)
+plant_products = inout.get_plant_products(Streams, pricesForOpex)
 
 #Finally create the config needed for the TEA pacakge
-confg = inout.TEA_config(Blocks, opex_d)
+config = inout.TEA_config(Blocks, variable_opex_inputs, plant_products)
 #Modify the config if needed.
 #create the plant.
-plant = Plant(confg)
-pprint(confg,indent=4)
+plant = Plant(config)
+pprint(config, indent=4)
 #Now use the function from TEA to get the cost.
 plant.calculate_levelized_cost(True)

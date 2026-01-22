@@ -48,48 +48,83 @@ def read_JSON(path)->dict:
     # unformat data here (nothing currently)
 
     return data
-OpexDict:TypeAlias = dict[str,dict[Union[Literal["consumption"],Literal["price"]], float]]
 
-def createOPEXdict(streamData:dict, blockDataDict:dict, prices:dict)->OpexDict:
-    opexDict = {}
+VariableOpexInputs:TypeAlias = dict[str,dict[Union[Literal["consumption"],Literal["price"]], float]]
 
-    netPowerConsumption = 0 #in kW!
-    for block in blockDataDict.values():
+def get_variable_opex_inputs(stream_data:dict, block_data_dict:dict, prices:dict, electricity_price: float)->VariableOpexInputs:
+    variable_opex_inputs = {}
+
+    net_power_consumption = 0 #in kW!
+    for block in block_data_dict.values():
         try:
-            netPowerConsumption += block["data"]["Net Power"][0]
+            net_power_consumption += block["data"]["Net Power"][0]
         except KeyError:
             pass
-    opexDict["electricity"] = {
-        "consumption" : netPowerConsumption * 24,
-        "price" : 7.5 #per kWh! TODO what is the real price?
+    variable_opex_inputs["electricity"] = {
+        "consumption" : net_power_consumption * 24,
+        "price" : electricity_price
     }
     
-    for stream in list(streamData.keys()):
-        streamName = stream.split(r"\\")[-1]
-        cost = streamData[rf"{stream}"]["SOURCE"]["cost/h"]
+    for stream in (s for s in stream_data.values() if not s["has_source"]):
+        stream_name = stream["path"]
+        cost = stream["cost/h"] or 0
         if cost != 0:
             consumption = 0
-            for flowrates in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
-                consumption += streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{flowrates}"]
-            opexDict[rf"{streamName}"] = {}
-            opexDict[rf"{streamName}"]["consumption"] = consumption * 24 #DAILY
-            opexDict[rf"{streamName}"]["price"] = cost / consumption #was hourly, now PER UNIT
+            for flowrates in list(stream["MASSFLOW"]["MIXED"].keys()):
+                consumption += stream["MASSFLOW"]["MIXED"][rf"{flowrates}"]
+            variable_opex_inputs[stream_name] = {}
+            variable_opex_inputs[stream_name]["consumption"] = consumption * 24 #DAILY
+            variable_opex_inputs[stream_name]["price"] = cost / consumption #was hourly, now PER UNIT
         else:
-            for subsName in list(streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"].keys()):
-                if subsName not in opexDict:
-                    opexDict[subsName] = {
+            for substance_name in stream["MASSFLOW"]["MIXED"].keys():
+                if substance_name not in variable_opex_inputs:
+                    variable_opex_inputs[substance_name] = {
                         "consumption": 0,
                         "price": 0
                     }
 
-                opexDict[rf"{subsName}"]["consumption"] += (streamData[rf"{stream}"]["MASSFLOW"][r"\MIXED"][rf"{subsName}"] * 24) #DAILY
-                if rf"{subsName}" in prices:
-                    opexDict[rf"{subsName}"]["price"] =  prices[rf"{subsName}"]
+                variable_opex_inputs[substance_name]["consumption"] += \
+                    (stream["MASSFLOW"]["MIXED"][rf"{substance_name}"] * 24) #DAILY
+                if rf"{substance_name}" in prices:
+                    variable_opex_inputs[rf"{substance_name}"]["price"] =  prices[rf"{substance_name}"]
                 else:
-                    sys.exit(rf"No given price for {subsName}")
+                    sys.exit(rf"No given price for {substance_name}")
         
-    return opexDict
-    
+    return variable_opex_inputs
+
+PlantProducts: TypeAlias = dict[str,dict[Union[Literal["production"],Literal["price"]], float]]
+
+def get_plant_products(stream_data:dict, prices:dict) -> PlantProducts:
+    plant_products = {}
+
+    for stream in (s for s in stream_data.values() if not s["has_dest"]):
+        stream_name = stream["path"]
+        cost = stream["cost/h"] or 0
+        if cost != 0:
+            production = 0
+            for flowrates in list(stream["MASSFLOW"]["MIXED"].keys()):
+                production += stream["MASSFLOW"]["MIXED"][rf"{flowrates}"]
+
+            plant_products[stream_name] = {}
+            plant_products[stream_name]["production"] = production * 24 #DAILY
+            plant_products[stream_name]["price"] = cost / production #was hourly, now PER UNIT
+        else:
+            for substance_name in stream["MASSFLOW"]["MIXED"].keys():
+                if substance_name not in plant_products:
+                    plant_products[substance_name] = {
+                        "production": 0,
+                        "price": 0
+                    }
+
+                plant_products[substance_name]["production"] += \
+                    (stream["MASSFLOW"]["MIXED"][rf"{substance_name}"] * 24) #DAILY
+                if rf"{substance_name}" in prices:
+                    plant_products[rf"{substance_name}"]["price"] =  prices[rf"{substance_name}"]
+                else:
+                    sys.exit(rf"No given price for {substance_name}")
+
+    return plant_products
+
 
 @dataclass
 class BlockEntry:
@@ -161,9 +196,11 @@ def CreateEquipment(name:str, year:int ,process_type:str, block):
 
 # =====================
 
-def TEA_config(data:dict, variable_opex_inputs:OpexDict,
+def TEA_config(data:dict,
+               variable_opex_inputs:VariableOpexInputs,
+               plant_products: PlantProducts,
                process_type="Fluids",
-               daily_prod=100,  # TODO: find a better value for this
+               daily_prod=100, # TODO: find a better value for this
                country="Netherlands",
                operator_hourly_rate=38.11,
                interest_rate=0.09,
@@ -194,8 +231,7 @@ def TEA_config(data:dict, variable_opex_inputs:OpexDict,
     configuration['operator_hourly_rate'] = operator_hourly_rate 
     configuration['interest_rate'] = interest_rate
 
-    # TODO: add the correct plant products
-    configuration['plant_products'] = { "not_real": { "price": 1.0, "production": 1.0 }  }
+    configuration['plant_products'] = plant_products
 
     configuration["project_lifetime"] = project_lifetime
 

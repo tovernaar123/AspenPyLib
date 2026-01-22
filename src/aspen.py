@@ -179,7 +179,6 @@ def read_data(aspen: Aspen, search=None):
     for block, path in blocks:
         record_type = block.AttributeValue(HAP_RECORDTYPE)
 
-
         curr_data = {
             "path": path,
             "record_type": record_type,
@@ -263,6 +262,7 @@ def read_all_data(aspen: Aspen):
 
     return data
 
+
 def MassSearch(MASSFLOW, vocal=True) -> dict:
     """
     this function returns a dictionary with all Massflows in the current directory in kg/h
@@ -272,59 +272,66 @@ def MassSearch(MASSFLOW, vocal=True) -> dict:
     :return: rerturns an dictionary with all massflows
     :rtype: dict
     """
-    data = {r"\CIPSD": {}, r"\MIXED": {}}
+    data = {r"CIPSD": {}, r"MIXED": {}}
 
     MIXED = list(get_all_children(MASSFLOW.FindNode(r"MIXED")))
     CIPSD = list(get_all_children(MASSFLOW.FindNode(r"CIPSD")))
     for mass, path in CIPSD:
-        if mass.Value != None:
-            data[r"\CIPSD"][rf"{path[1:]}"] = mass.Value
-        else:
-            data[r"\CIPSD"][rf"{path[1:]}"] = 0
+        if mass.Value not in (None, 0):
+            data[r"CIPSD"][rf"{path[1:]}"] = get_value_with_unit(mass, "kg/hr")
 
     for mass, path in MIXED:
-        if mass.Value != None:
-            data[r"\MIXED"][rf"{path[1:]}"] = mass.Value
-        else:
-            data[r"\MIXED"][rf"{path[1:]}"] = 0
+        if mass.Value not in (None, 0):
+            data[r"MIXED"][rf"{path[1:]}"] = get_value_with_unit(mass, "kg/hr")
 
     return data
 
 
 def StreamSearch(stream, path, vocal=True):
-    data = {}
+    stream_type = stream.AttributeValue(HAP_RECORDTYPE)
+    has_source = stream.FindNode(rf"Ports\SOURCE").AttributeValue(HAP_HASCHILDREN)
+    has_dest = stream.FindNode(rf"Ports\DEST").AttributeValue(HAP_HASCHILDREN)
 
-    port = stream.FindNode(rf"Ports\SOURCE")
     # print(port)
+    if vocal: print(f"""
+        stream type: {stream_type}
+        has parent: {has_source}
+        has source: {has_dest}
+    """)
+
+    data = {
+        "type": stream_type,
+        "path": path,
+        "has_source": has_source == 1,
+        "has_dest": has_dest == 1,
+        "cost/h": 0.,
+    }
+
+    match stream_type:
+        case "MATERIAL":
+            data["MASSFLOW"] = MassSearch(stream.FindNode(r"\Output\MASSFLOW"), vocal)
+
+            if stream.FindNode(r"Output\STCOST").AttributeValue(0) is not None:
+                data["cost/h"] = float(
+                    stream.FindNode(r"Output\STCOST").AttributeValue(0)
+                )
+        case "HEAT":
+            data["QCALC"] = get_value_with_unit(stream.FindNode(r"\Output\QCALC"), "kW")
+        case type:
+            print(f"unhandled stream of {type=}")
+
     if vocal:
-        print(f"    has parent: {port.AttributeValue(HAP_HASCHILDREN)}")
-
-    if port.AttributeValue(HAP_HASCHILDREN) == False:
-        if vocal:
-            print(rf"   {path} is parentless")
-        data[rf"{path}"] = {}
-        data[rf"{path}"][r"SOURCE"] = {"cost/h": 0}
-        data[rf"{path}"][r"MASSFLOW"] = MassSearch(
-            MASSFLOW=stream.FindNode(r"\Output\MASSFLOW")
-        )
-
-        if stream.FindNode(r"Output\STCOST").AttributeValue(0) != None:
-            data[rf"{path}"][r"SOURCE"]["cost/h"] = float(
-                stream.FindNode(r"Output\STCOST").AttributeValue(0)
-            )
-
-        if vocal:
-            print(f"    cost/h: {data[rf'{path}'][r'SOURCE']['cost/h']}")
+        print(f"    cost/h: {data['cost/h']}")
 
     return data
 
 
 def GetStreams(aspen: Aspen, vocal=True):
     """
-    This functions creates an dictionary with as indices the path to the objects
+    This functions creates a dictionary with as indices the path to the objects
     MASSFLOW is in kg/h
 
-    :param aspen: the Asping object with which the file is treveresd
+    :param aspen: the Aspen object
     :param vocal: True makes the function print more information
     """
 
@@ -349,15 +356,12 @@ def GetStreams(aspen: Aspen, vocal=True):
             s = block.FindNode(r"Data\Streams")
             blocks.extend(get_all_children(b, rf"{path}\{child_path}"))
             streams.extend(get_all_children(s, rf"{path}\Data\Streams"))
-    if vocal:
-        print(f"streams found: {streams}")
+    if vocal: print(f"streams found: {streams}")
     for stream, path in streams:
-        if vocal:
-            print("\n-----", path, "----- type:", type(stream))
-        data.update(StreamSearch(stream=stream, path=path, vocal=vocal))
+        if vocal: print("\n-----", path, "----- type:", type(stream))
+        data[path] = StreamSearch(stream, path, vocal)
 
-    if vocal:
-        pprint(data)
+    if vocal: pprint(data)
 
     return data
 
